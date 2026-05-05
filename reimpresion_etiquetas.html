@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrazeQ — Reimpresión de Etiquetas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      animation: {
+        'fade-in':   'fadeIn .25s ease',
+        'slide-up':  'slideUp .3s ease',
+        'slide-down':'slideDown .25s ease',
+        'shake':     'shake .4s ease',
+        'pop':       'pop .3s cubic-bezier(.36,.07,.19,.97)',
+        'spin-slow': 'spin 1s linear infinite',
+        'pulse-soft':'pulseSoft 2s infinite',
+      },
+      keyframes: {
+        fadeIn:    { from:{opacity:0}, to:{opacity:1} },
+        slideUp:   { from:{opacity:0,transform:'translateY(14px)'}, to:{opacity:1,transform:'translateY(0)'} },
+        slideDown: { from:{opacity:0,transform:'translateY(-8px)'}, to:{opacity:1,transform:'translateY(0)'} },
+        shake:     { '0%,100%':{transform:'translateX(0)'},'20%':{transform:'translateX(-6px)'},'40%':{transform:'translateX(6px)'},'60%':{transform:'translateX(-4px)'},'80%':{transform:'translateX(4px)'} },
+        pop:       { '0%':{transform:'scale(.94)'},'60%':{transform:'scale(1.04)'},'100%':{transform:'scale(1)'} },
+        pulseSoft: { '0%,100%':{opacity:1},'50%':{opacity:.5} },
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  .scrollbar-light::-webkit-scrollbar { width: 5px; }
+  .scrollbar-light::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+  /* Password dots */
+  input[type=password] { letter-spacing: 4px; }
+
+  /* Barcode */
+  .barcode-svg { width: 100%; height: 42px; display: block; }
+
+  /* Print preview paper */
+  .etiqueta-paper { background: #fff; font-family: 'JetBrains Mono', monospace; }
+
+  /* Step connector */
+  .step-line { flex: 1; height: 2px; background: #e2e8f0; transition: background .4s; }
+  .step-line.done { background: #16a34a; }
+
+  /* Scan animation */
+  @keyframes scanBeam {
+    0%,100% { top: 6px; opacity: .9; }
+    50%      { top: 44px; opacity: .4; }
+  }
+  .scan-beam {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #22c55e, transparent);
+    animation: scanBeam 1.8s ease-in-out infinite;
+  }
+  .bracket { position: absolute; width: 14px; height: 14px; }
+  .bracket-tl { top:0; left:0; border-top:2.5px solid currentColor; border-left:2.5px solid currentColor; border-radius:2px 0 0 0; }
+  .bracket-tr { top:0; right:0; border-top:2.5px solid currentColor; border-right:2.5px solid currentColor; border-radius:0 2px 0 0; }
+  .bracket-bl { bottom:0; left:0; border-bottom:2.5px solid currentColor; border-left:2.5px solid currentColor; border-radius:0 0 0 2px; }
+  .bracket-br { bottom:0; right:0; border-bottom:2.5px solid currentColor; border-right:2.5px solid currentColor; border-radius:0 0 2px 0; }
+
+  input:focus, select:focus, textarea:focus { outline: none; }
+
+  /* Log audit row */
+  .audit-row:nth-child(even) td { background: #f8fafc; }
+
+  /* Anular badge glow */
+  @keyframes anulGlow { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.3)} 50%{box-shadow:0 0 0 6px rgba(220,38,38,0)} }
+  .anul-glow { animation: anulGlow 2s infinite; }
+</style>
+</head>
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- ════════ SIDEBAR -->
+<aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+  <div class="px-4 py-5 border-b border-white/5">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/>
+        </svg>
+      </div>
+      <div>
+        <div class="text-white font-bold text-sm">TrazeQ</div>
+        <div class="text-slate-500 text-[10px] mt-0.5">Trazabilidad v2.4</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+
+      <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2">Principal</div>
+
+      <a href="dashboard_produccion.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>Dashboard
+      </a>
+
+      <a href="etiquetas_tailwind.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>Gestion de Etiquetas
+      </a>
+
+      <a href="reimpresion_etiquetas.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>Re-Impresion Etiquetas
+      </a>
+
+      <a href="captura_produccion.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>Producción
+      </a>
+
+      <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2 mt-3">Control</div>
+      <a href="control_calidad.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="20 6 9 17 4 12" />
+        </svg>Calidad
+      </a>
+
+      <a href="partes_trabajo.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+          <line x1="8" y1="16" x2="12" y2="16" />
+        </svg>Partes de Trabajo
+      </a>
+
+      <a href="seguimiento_inventario.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>Inventario
+      </a>
+
+      <a href="trazabilidad.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>Trazabilidad
+      </a>
+      <a
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>Reportes
+      </a>
+      <a
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+        </svg>Configuración
+      </a>
+
+    </nav>
+
+
+  <div class="px-3 py-3 border-t border-white/5">
+    <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+      <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold">JF</div>
+      <div>
+        <div class="text-slate-200 text-xs font-semibold">Juan Flores</div>
+        <div class="text-slate-500 text-[10px]">Operario · Turno 2</div>
+      </div>
+      <div class="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ════════ MAIN -->
+<div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+  <!-- TOPBAR -->
+  <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+    <div>
+      <h1 class="text-base font-extrabold text-slate-800">Reimpresión de Etiquetas</h1>
+      <p class="text-[11px] text-slate-400">Requiere autorización de supervisor · Genera auditoría automática</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-1.5">
+        <svg class="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="text-xs font-bold text-red-600">Control anti-duplicidad activo</span>
+      </div>
+      <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- STEPPER -->
+  <div class="bg-white border-b border-slate-100 px-6 py-3">
+    <div class="flex items-center gap-0 max-w-3xl">
+      <div class="flex items-center gap-2">
+        <div id="s1-circle" class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold transition-all">1</div>
+        <span id="s1-label" class="text-xs font-semibold text-blue-700">Buscar etiqueta</span>
+      </div>
+      <div class="step-line mx-3" id="line12"></div>
+      <div class="flex items-center gap-2">
+        <div id="s2-circle" class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">2</div>
+        <span id="s2-label" class="text-xs font-semibold text-slate-400">Motivo</span>
+      </div>
+      <div class="step-line mx-3" id="line23"></div>
+      <div class="flex items-center gap-2">
+        <div id="s3-circle" class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">3</div>
+        <span id="s3-label" class="text-xs font-semibold text-slate-400">Autorización</span>
+      </div>
+      <div class="step-line mx-3" id="line34"></div>
+      <div class="flex items-center gap-2">
+        <div id="s4-circle" class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">4</div>
+        <span id="s4-label" class="text-xs font-semibold text-slate-400">Reimprimir</span>
+      </div>
+    </div>
+  </div>
+
+  <main class="flex-1 p-6 space-y-5">
+
+    <!-- ══ PASO 1: BUSCAR ETIQUETA ══ -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5" id="step1-panel">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
+          <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M3 9V6a2 2 0 0 1 2-2h2M15 4h2a2 2 0 0 1 2 2v3M3 15v3a2 2 0 0 1 2 2h2M15 20h2a2 2 0 0 1 2-2v-3"/>
+            <line x1="7" y1="12" x2="17" y2="12" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3 class="text-sm font-bold text-slate-800">Paso 1 — Buscar etiqueta a reimprimir</h3>
+      </div>
+
+      <div class="grid grid-cols-2 gap-5">
+        <!-- Escaneo -->
+        <div>
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Escanear código de la etiqueta original</label>
+          <div class="flex gap-2">
+            <!-- Scanner icon -->
+            <div class="relative w-14 h-10 bg-slate-50 border-2 border-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div class="bracket bracket-tl text-blue-400"></div>
+              <div class="bracket bracket-tr text-blue-400"></div>
+              <div class="bracket bracket-bl text-blue-400"></div>
+              <div class="bracket bracket-br text-blue-400"></div>
+              <div class="scan-beam" id="scan-beam"></div>
+              <svg class="w-5 h-5 text-blue-300 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 9V6a2 2 0 0 1 2-2h2M15 4h2a2 2 0 0 1 2 2v3M3 15v3a2 2 0 0 1 2 2h2M15 20h2a2 2 0 0 1 2-2v-3"/>
+              </svg>
+            </div>
+            <input type="text" id="scan-input" placeholder="Escanee o ingrese el código de la etiqueta..." autofocus
+              class="flex-1 font-mono text-sm border-2 border-blue-300 focus:border-blue-500 bg-blue-50 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 transition-all"
+              onkeydown="if(event.key==='Enter') buscarEtiqueta()">
+            <button onclick="buscarEtiqueta()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+              Buscar
+            </button>
+            <button onclick="simEscaneo()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-xl transition-colors whitespace-nowrap">
+              Demo
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1.5">También puede buscar por número de lote o OP en la búsqueda manual</p>
+        </div>
+
+        <!-- Búsqueda manual -->
+        <div>
+          <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Búsqueda manual</label>
+          <div class="grid grid-cols-2 gap-2">
+            <select id="search-proceso" class="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600 cursor-pointer">
+              <option value="">Proceso...</option>
+              <option>Inyectado</option><option>Metalizado</option>
+              <option>Serigrafiado</option><option>Pintado</option>
+              <option>Ensamble</option><option>Producto Terminado</option>
+            </select>
+            <input type="text" id="search-lote" placeholder="Lote o OP..." class="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600">
+            <input type="date" id="search-fecha" value="2026-04-15" class="text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 text-slate-600">
+            <button onclick="buscarManual()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold py-2 rounded-xl transition-colors">
+              Buscar etiquetas
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultados de búsqueda manual -->
+      <div id="search-results" class="hidden mt-4 animate-slide-down">
+        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2" id="search-results-title">Resultados</div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border border-slate-200 rounded-xl overflow-hidden">
+            <thead>
+              <tr class="bg-slate-50">
+                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">OP</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Proceso</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Caja</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha imp.</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="search-tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Alert etiqueta no encontrada -->
+      <div id="alert-notfound" class="hidden mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3 animate-slide-down">
+        <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <div>
+          <div class="text-sm font-bold text-red-700">Etiqueta no encontrada</div>
+          <div class="text-xs text-red-500 mt-0.5" id="alert-notfound-msg">El código ingresado no corresponde a ninguna etiqueta registrada.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PASOS 2, 3 y 4 (ocultos hasta encontrar etiqueta) ══ -->
+    <div id="steps234" class="hidden space-y-5 animate-slide-up">
+
+      <div class="grid grid-cols-2 gap-5">
+
+        <!-- ══ PASO 2: INFO + MOTIVO ══ -->
+        <div class="space-y-5">
+
+          <!-- Info etiqueta -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-7 h-7 bg-slate-100 rounded-xl flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">Información de la Etiqueta</h3>
+              <span class="ml-auto text-[10px] font-bold bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded-full anul-glow">ORIGINAL ANULADA</span>
+            </div>
+            <div class="space-y-2" id="info-etiqueta"></div>
+          </div>
+
+          <!-- Motivo -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-7 h-7 bg-amber-100 rounded-xl flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">Motivo de Reimpresión</h3>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Motivo <span class="text-red-500">*</span></label>
+                <select id="motivo-select" onchange="onMotivoChange()"
+                  class="w-full border-2 border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 cursor-pointer transition-all">
+                  <option value="">— Seleccione un motivo —</option>
+                  <option value="danada">Etiqueta dañada</option>
+                  <option value="ilegible">Etiqueta ilegible / borrosa</option>
+                  <option value="perdida">Etiqueta perdida</option>
+                  <option value="error_impresion">Error de impresión</option>
+                  <option value="error_datos">Error en datos de la etiqueta</option>
+                  <option value="caja_reasignada">Caja reasignada</option>
+                  <option value="otro">Otro (especificar)</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Observaciones <span class="text-red-500">*</span></label>
+                <textarea id="motivo-obs" rows="3" placeholder="Describa el motivo con detalle..."
+                  class="w-full border-2 border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2 text-xs text-slate-600 resize-none transition-all"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Autorización supervisor -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5" id="auth-panel">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-7 h-7 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">Autorización de Supervisor</h3>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Supervisor <span class="text-red-500">*</span></label>
+                <select id="auth-supervisor" class="w-full border-2 border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 cursor-pointer transition-all">
+                  <option value="">— Seleccione supervisor —</option>
+                  <option value="jperez">Juan Pérez</option>
+                  <option value="mtorres">Mario Torres</option>
+                  <option value="lgomez">Lucía Gómez</option>
+                  <option value="arivera">Andrés Rivera</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Contraseña <span class="text-red-500">*</span></label>
+                <div class="relative">
+                  <input type="password" id="auth-pass" placeholder="Contraseña del supervisor"
+                    class="w-full border-2 border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-slate-50 transition-all pr-10">
+                  <button onclick="togglePass()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg id="eye-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button onclick="verificarAuth()" id="btn-auth"
+                class="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Verificar autorización
+              </button>
+              <!-- Estado auth -->
+              <div id="auth-status" class="hidden rounded-xl px-3 py-2.5 flex items-center gap-2.5 animate-pop">
+                <div id="auth-status-icon"></div>
+                <div>
+                  <div id="auth-status-title" class="text-xs font-bold"></div>
+                  <div id="auth-status-sub" class="text-[10px] mt-0.5"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ LADO DERECHO: PREVIEW + HISTORIAL ══ -->
+        <div class="space-y-5">
+
+          <!-- Vista previa nueva etiqueta -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse-soft"></div>
+              <h3 class="text-sm font-bold text-slate-700">Vista previa — Nueva etiqueta</h3>
+              <span class="ml-auto text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">NUEVO ID</span>
+            </div>
+
+            <!-- Etiqueta paper -->
+            <div class="etiqueta-paper border-2 border-slate-200 rounded-xl p-4 shadow-sm" id="label-preview">
+              <!-- generado por JS -->
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+              <span id="prev-uid">UID: —</span>
+              <span id="prev-size">100 × 60 mm · ZPL/Bluetooth</span>
+            </div>
+
+            <!-- Impresora -->
+            <div class="mt-4 flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              <select id="printer-sel" class="flex-1 bg-transparent text-xs font-semibold text-slate-700 border-none cursor-pointer">
+                <option>Zebra ZT411 — Planta 1 (Industrial)</option>
+                <option>Zebra ZD421 — Planta 2 (Industrial)</option>
+                <option>TSC MB240T (Portátil Bluetooth)</option>
+                <option>Honeywell PC42 (Portátil)</option>
+              </select>
+              <div class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+            </div>
+
+            <!-- Botón reimprimir -->
+            <button id="btn-reimprimir" onclick="ejecutarReimpresion()" disabled
+              class="mt-4 w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-sm py-3 rounded-xl transition-all active:scale-95">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Reimprimir Etiqueta
+            </button>
+            <div id="btn-hint" class="mt-2 text-center text-[10px] text-amber-600 font-semibold">
+              ⚠ Requiere motivo y autorización de supervisor
+            </div>
+          </div>
+
+          <!-- Historial de reimpresiones -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <h3 class="text-sm font-bold text-slate-700">Historial de reimpresiones</h3>
+              <span class="text-[10px] text-slate-400 ml-auto">Lote actual</span>
+            </div>
+            <div id="audit-log-lote">
+              <div class="text-[11px] text-slate-400 text-center py-4">Seleccione una etiqueta para ver su historial</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LOG GLOBAL DE AUDITORÍA ══ -->
+    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <h3 class="text-sm font-bold text-slate-700">Log global de auditoría de reimpresiones — Turno 2</h3>
+        </div>
+        <span class="text-[11px] text-slate-400" id="audit-count">— registros</span>
+      </div>
+      <div class="overflow-x-auto scrollbar-light">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100">
+              <th class="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hora</th>
+              <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote</th>
+              <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Caja</th>
+              <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Motivo</th>
+              <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Supervisor</th>
+              <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">ID Original</th>
+              <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nuevo ID</th>
+              <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Impresora</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody" class="divide-y divide-slate-50"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
+  <div class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[260px]">
+    <span id="toast-icon"></span><span id="toast-msg"></span>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div id="success-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center backdrop-blur-sm">
+  <div class="bg-white rounded-3xl p-6 w-[420px] shadow-2xl animate-pop">
+    <div class="text-center mb-4">
+      <div class="w-16 h-16 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-3">
+        <svg class="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 class="text-lg font-extrabold text-slate-800">Reimpresión exitosa</h2>
+      <p class="text-xs text-slate-500 mt-1">La etiqueta fue enviada a la impresora</p>
+    </div>
+    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 mb-4" id="success-details"></div>
+    <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-2 mb-4">
+      <svg class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <p class="text-[11px] text-red-700 font-medium">La etiqueta original ha sido <strong>anulada</strong> en el sistema. Si se escanea, el sistema la rechazará y mostrará este evento en el log.</p>
+    </div>
+    <button onclick="cerrarModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl transition-colors">
+      Cerrar
+    </button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════
+// CLOCK
+// ══════════════════════════
+function tick() { document.getElementById('clock').textContent = new Date().toTimeString().split(' ')[0]; }
+setInterval(tick, 1000); tick();
+
+// ══════════════════════════
+// DATOS DEMO
+// ══════════════════════════
+const PROC_COLOR = {
+  'Inyectado':'bg-violet-100 text-violet-700','Metalizado':'bg-sky-100 text-sky-700',
+  'Serigrafiado':'bg-amber-100 text-amber-700','Pintado':'bg-orange-100 text-orange-700',
+  'Ensamble':'bg-teal-100 text-teal-700','Producto Terminado':'bg-green-100 text-green-700',
+};
+
+const etiquetasDB = [
+  { uid:'7A3F2B9C-001', lote:'INY-T2-20260415-00045', op:'OP-2024-000156', proceso:'Inyectado', maquina:'INY-03', caja:3, totalCajas:10, qty:120, turno:'T2', fecha:'15/04/2026', horaImp:'15:30', usuario:'operador1', estado:'activa' },
+  { uid:'7A3F2B9C-002', lote:'INY-T2-20260415-00045', op:'OP-2024-000156', proceso:'Inyectado', maquina:'INY-03', caja:4, totalCajas:10, qty:120, turno:'T2', fecha:'15/04/2026', horaImp:'15:32', usuario:'operador1', estado:'activa' },
+  { uid:'7A3F2B9C-003', lote:'INY-T2-20260415-00045', op:'OP-2024-000156', proceso:'Inyectado', maquina:'INY-03', caja:5, totalCajas:10, qty:120, turno:'T2', fecha:'15/04/2026', horaImp:'15:34', usuario:'operador1', estado:'anulada' },
+  { uid:'8B4C1D0E-001', lote:'MET-T2-20260415-00046', op:'OP-2024-000157', proceso:'Metalizado', maquina:'MET-02', caja:2, totalCajas:8, qty:120, turno:'T2', fecha:'15/04/2026', horaImp:'16:10', usuario:'operador2', estado:'activa' },
+  { uid:'9C5D2E1F-001', lote:'SER-T2-20260415-00047', op:'OP-2024-000158', proceso:'Serigrafiado', maquina:'SER-01', caja:1, totalCajas:7, qty:120, turno:'T2', fecha:'15/04/2026', horaImp:'14:45', usuario:'operador1', estado:'activa' },
+];
+
+const MOTIVOS = {
+  danada:'Etiqueta dañada', ilegible:'Etiqueta ilegible / borrosa',
+  perdida:'Etiqueta perdida', error_impresion:'Error de impresión',
+  error_datos:'Error en datos', caja_reasignada:'Caja reasignada', otro:'Otro',
+};
+
+const SUPERVISORS = { jperez:'Juan Pérez', mtorres:'Mario Torres', lgomez:'Lucía Gómez', arivera:'Andrés Rivera' };
+const PASS_DEMO = { jperez:'1234', mtorres:'1234', lgomez:'1234', arivera:'1234' };
+
+let auditLog = [
+  { hora:'14:22', lote:'SER-T2-20260415-00043', caja:'2/6', motivo:'Etiqueta dañada', supervisor:'Mario Torres', uidOrig:'6B2A1C8D-002', uidNew:'6B2A1C8D-002R', impresora:'Zebra ZT411' },
+  { hora:'15:08', lote:'INY-T2-20260415-00044', caja:'1/10', motivo:'Etiqueta ilegible', supervisor:'Juan Pérez', uidOrig:'5A1B0C7E-001', uidNew:'5A1B0C7E-001R', impresora:'TSC MB240T' },
+];
+
+let etiquetaSel = null;
+let authOk = false;
+
+// ══════════════════════════
+// BUSCAR ETIQUETA
+// ══════════════════════════
+function simEscaneo() {
+  const demos = etiquetasDB.filter(e => e.estado === 'activa');
+  const e = demos[Math.floor(Math.random() * demos.length)];
+  document.getElementById('scan-input').value = e.uid;
+  setTimeout(() => buscarEtiqueta(), 150);
+}
+
+function buscarEtiqueta() {
+  const val = document.getElementById('scan-input').value.trim();
+  if (!val) { showToast('error', 'Ingrese un código para buscar'); return; }
+
+  // Animar scan beam
+  document.getElementById('scan-beam').style.background = 'linear-gradient(90deg,transparent,#f59e0b,transparent)';
+  setTimeout(() => document.getElementById('scan-beam').style.background = 'linear-gradient(90deg,transparent,#22c55e,transparent)', 300);
+
+  const etiq = etiquetasDB.find(e => e.uid === val || e.lote === val);
+  document.getElementById('alert-notfound').classList.add('hidden');
+  document.getElementById('search-results').classList.add('hidden');
+
+  if (!etiq) {
+    document.getElementById('alert-notfound').classList.remove('hidden');
+    document.getElementById('alert-notfound-msg').textContent = `El código "${val}" no corresponde a ninguna etiqueta registrada. Verifique el código e intente nuevamente.`;
+    return;
+  }
+  if (etiq.estado === 'anulada') {
+    document.getElementById('alert-notfound').classList.remove('hidden');
+    document.getElementById('alert-notfound-msg').textContent = `⚠ La etiqueta "${val}" ya fue ANULADA. No puede reimprimirse. Busque la etiqueta de reemplazo o contacte al supervisor.`;
+    return;
+  }
+  cargarEtiqueta(etiq);
+}
+
+function buscarManual() {
+  const proceso = document.getElementById('search-proceso').value;
+  const lote    = document.getElementById('search-lote').value.toLowerCase();
+  let res = etiquetasDB;
+  if (proceso) res = res.filter(e => e.proceso === proceso);
+  if (lote)    res = res.filter(e => e.lote.toLowerCase().includes(lote) || e.op.toLowerCase().includes(lote));
+
+  document.getElementById('alert-notfound').classList.add('hidden');
+  document.getElementById('search-results').classList.remove('hidden');
+  document.getElementById('search-results-title').textContent = `${res.length} etiqueta${res.length !== 1 ? 's' : ''} encontrada${res.length !== 1 ? 's' : ''}`;
+
+  const tbody = document.getElementById('search-tbody');
+  if (!res.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-slate-400 text-xs">Sin resultados</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = res.map(e => {
+    const estCls = e.estado === 'activa' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+    const procCls = PROC_COLOR[e.proceso] || 'bg-slate-100 text-slate-600';
+    return `
+    <tr class="hover:bg-slate-50 transition-colors">
+      <td class="px-3 py-2 font-mono text-[11px] font-bold text-slate-700">${e.lote}</td>
+      <td class="px-3 py-2 font-mono text-[10px] text-slate-500">${e.op}</td>
+      <td class="px-3 py-2"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${procCls}">${e.proceso}</span></td>
+      <td class="px-3 py-2 text-center text-[11px] font-bold text-slate-700">${e.caja} / ${e.totalCajas}</td>
+      <td class="px-3 py-2 text-center font-mono text-[10px] text-slate-500">${e.fecha} ${e.horaImp}</td>
+      <td class="px-3 py-2 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${estCls}">${e.estado === 'activa' ? 'Activa' : 'Anulada'}</span></td>
+      <td class="px-3 py-2 text-center">
+        ${e.estado === 'activa'
+          ? `<button onclick="cargarEtiqueta(etiquetasDB.find(x=>x.uid==='${e.uid}'))" class="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-3 py-1 rounded-lg transition-colors">Seleccionar</button>`
+          : `<span class="text-[10px] text-slate-400">No disponible</span>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════
+// CARGAR ETIQUETA
+// ══════════════════════════
+function cargarEtiqueta(etiq) {
+  etiquetaSel = etiq;
+  authOk = false;
+
+  document.getElementById('search-results').classList.add('hidden');
+  document.getElementById('alert-notfound').classList.add('hidden');
+  document.getElementById('steps234').classList.remove('hidden');
+  document.getElementById('steps234').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  setStep(2);
+  resetAuth();
+
+  // Info etiqueta
+  const campos = [
+    { label:'Lote',             val:`<span class="font-mono font-bold text-green-700">${etiq.lote}</span>` },
+    { label:'Orden de Producción', val: etiq.op },
+    { label:'Proceso',         val:`<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${PROC_COLOR[etiq.proceso]||''}">${etiq.proceso}</span>` },
+    { label:'Caja',            val:`<span class="font-bold">${etiq.caja} de ${etiq.totalCajas}</span>` },
+    { label:'Cantidad',        val:`${etiq.qty} und` },
+    { label:'Fecha impresión', val:`${etiq.fecha} ${etiq.horaImp}` },
+    { label:'Impresión original', val:`Usuario: ${etiq.usuario}` },
+    { label:'UID original',    val:`<span class="font-mono text-red-500 font-bold text-[10px]">${etiq.uid}</span>` },
+  ];
+  document.getElementById('info-etiqueta').innerHTML = campos.map(c => `
+    <div class="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+      <span class="text-[11px] text-slate-400 font-medium">${c.label}</span>
+      <span class="text-[11px] text-slate-700">${c.val}</span>
+    </div>`).join('');
+
+  // Preview nueva etiqueta
+  renderPreview(etiq);
+
+  // Historial del lote
+  renderAuditLote(etiq.lote);
+
+  showToast('success', `Etiqueta encontrada: ${etiq.lote} · Caja ${etiq.caja}/${etiq.totalCajas}`);
+}
+
+// ══════════════════════════
+// BARCODE SVG
+// ══════════════════════════
+function makeBars(text) {
+  let bars = []; let x = 3;
+  bars.push({x,w:2}); x+=3; bars.push({x,w:1}); x+=2;
+  for(let i=0;i<text.length;i++){
+    const c=text.charCodeAt(i)%10;
+    const pats=[[2,1,1,2],[1,2,1,2],[1,1,2,2],[2,2,1,1],[1,2,2,1],[2,1,2,1],[1,1,1,3],[3,1,1,1],[1,3,1,1],[2,1,3,1]];
+    let d=true;
+    for(const w of pats[c]){if(d)bars.push({x,w});x+=w+1;d=!d;}x+=1;
+  }
+  bars.push({x,w:2}); x+=3; bars.push({x,w:1}); x+=2; bars.push({x,w:2}); x+=6;
+  const rects=bars.map(b=>`<rect x="${b.x}" y="0" width="${b.w}" height="40" fill="#111827"/>`).join('');
+  return `<svg viewBox="0 0 ${x} 40" class="barcode-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><rect width="${x}" height="40" fill="white"/>${rects}</svg>`;
+}
+
+let qrInst = null;
+function renderPreview(etiq) {
+  const newUid = etiq.uid + '-R' + Date.now().toString().slice(-3);
+  document.getElementById('prev-uid').textContent = `Nuevo UID: ${newUid}`;
+
+  document.getElementById('label-preview').innerHTML = `
+    <div style="font-family:'JetBrains Mono',monospace;">
+      <div style="text-align:center;font-size:10px;font-weight:700;color:#475569;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">${etiq.proceso.toUpperCase()}</div>
+      <div style="text-align:center;font-size:14px;font-weight:800;color:#0f172a;margin-bottom:8px;line-height:1.2">${etiq.lote}</div>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:9px;color:#64748b;line-height:1.9">
+            <div><b>OP:</b> ${etiq.op}</div>
+            <div><b>Turno:</b> ${etiq.turno} · ${etiq.fecha}</div>
+            <div><b>Máquina:</b> ${etiq.maquina}</div>
+            <div><b>Cant.:</b> ${etiq.qty} und</div>
+            <div style="font-weight:800;color:#0f172a"><b>Caja:</b> ${etiq.caja} de ${etiq.totalCajas}</div>
+          </div>
+        </div>
+        <div id="qr-prev" style="flex-shrink:0"></div>
+      </div>
+      ${makeBars(etiq.lote)}
+      <div style="font-size:7px;color:#94a3b8;text-align:center;margin-top:2px;letter-spacing:.5px">${newUid}</div>
+      <div style="background:#0f172a;color:#fff;font-size:10px;font-weight:800;text-align:center;padding:4px 8px;border-radius:5px;margin-top:6px;letter-spacing:1px">REIMPRESIÓN · CAJA ${etiq.caja} DE ${etiq.totalCajas}</div>
+    </div>`;
+
+  setTimeout(() => {
+    const el = document.getElementById('qr-prev');
+    if (el) {
+      el.innerHTML = '';
+      try { new QRCode(el, { text:`https://trazeq.app/r/${newUid}`, width:56, height:56, colorDark:'#0f172a' }); } catch(e){}
+    }
+  }, 50);
+}
+
+// ══════════════════════════
+// MOTIVO CHANGE
+// ══════════════════════════
+function onMotivoChange() {
+  const val = document.getElementById('motivo-select').value;
+  if (val) setStep(3);
+}
+
+// ══════════════════════════
+// PASSWORD TOGGLE
+// ══════════════════════════
+function togglePass() {
+  const inp = document.getElementById('auth-pass');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ══════════════════════════
+// VERIFICAR AUTH
+// ══════════════════════════
+function verificarAuth() {
+  const motivo = document.getElementById('motivo-select').value;
+  const obs    = document.getElementById('motivo-obs').value.trim();
+  const supId  = document.getElementById('auth-supervisor').value;
+  const pass   = document.getElementById('auth-pass').value;
+
+  if (!motivo) { showToast('error', 'Seleccione un motivo de reimpresión'); return; }
+  if (!obs)    { showToast('error', 'Ingrese las observaciones'); return; }
+  if (!supId)  { showToast('error', 'Seleccione un supervisor'); return; }
+  if (!pass)   { showToast('error', 'Ingrese la contraseña del supervisor'); return; }
+
+  const btn = document.getElementById('btn-auth');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="w-4 h-4 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Verificando...`;
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Verificar autorización`;
+
+    const statusEl    = document.getElementById('auth-status');
+    const statusIcon  = document.getElementById('auth-status-icon');
+    const statusTitle = document.getElementById('auth-status-title');
+    const statusSub   = document.getElementById('auth-status-sub');
+
+    if (PASS_DEMO[supId] && pass === PASS_DEMO[supId]) {
+      // ÉXITO
+      authOk = true;
+      statusEl.className = 'rounded-xl px-3 py-2.5 flex items-center gap-2.5 animate-pop bg-green-50 border border-green-200';
+      statusIcon.innerHTML = `<svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+      statusTitle.className = 'text-xs font-bold text-green-800';
+      statusTitle.textContent = `Autorización válida — ${SUPERVISORS[supId]}`;
+      statusSub.className = 'text-[10px] text-green-600 mt-0.5';
+      statusSub.textContent = `Supervisor autenticado correctamente. Puede proceder a reimprimir.`;
+      statusEl.classList.remove('hidden');
+
+      // Habilitar botón reimprimir
+      document.getElementById('btn-reimprimir').disabled = false;
+      document.getElementById('btn-hint').innerHTML = `<span class="text-green-600">✓ Listo para reimprimir</span>`;
+      setStep(4);
+      showToast('success', `✓ Autorizado por ${SUPERVISORS[supId]}`);
+    } else {
+      // ERROR
+      authOk = false;
+      statusEl.className = 'rounded-xl px-3 py-2.5 flex items-center gap-2.5 animate-shake bg-red-50 border border-red-200';
+      statusIcon.innerHTML = `<svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+      statusTitle.className = 'text-xs font-bold text-red-700';
+      statusTitle.textContent = 'Contraseña incorrecta';
+      statusSub.className = 'text-[10px] text-red-500 mt-0.5';
+      statusSub.textContent = 'Verifique la contraseña e intente nuevamente. (Demo: use "1234")';
+      statusEl.classList.remove('hidden');
+
+      document.getElementById('auth-pass').classList.add('animate-shake');
+      setTimeout(() => document.getElementById('auth-pass').classList.remove('animate-shake'), 400);
+      showToast('error', 'Contraseña incorrecta');
+    }
+  }, 1200);
+}
+
+function resetAuth() {
+  authOk = false;
+  document.getElementById('auth-supervisor').value = '';
+  document.getElementById('auth-pass').value = '';
+  document.getElementById('motivo-select').value = '';
+  document.getElementById('motivo-obs').value = '';
+  document.getElementById('auth-status').classList.add('hidden');
+  document.getElementById('btn-reimprimir').disabled = true;
+  document.getElementById('btn-hint').innerHTML = '⚠ Requiere motivo y autorización de supervisor';
+}
+
+// ══════════════════════════
+// EJECUTAR REIMPRESIÓN
+// ══════════════════════════
+function ejecutarReimpresion() {
+  if (!authOk || !etiquetaSel) return;
+
+  const motivo   = document.getElementById('motivo-select').value;
+  const supId    = document.getElementById('auth-supervisor').value;
+  const printer  = document.getElementById('printer-sel').value.split(' — ')[0];
+  const newUid   = etiquetaSel.uid + '-R' + Date.now().toString().slice(-3);
+  const hora     = new Date().toTimeString().split(' ')[0].slice(0,5);
+
+  // Anular original
+  const orig = etiquetasDB.find(e => e.uid === etiquetaSel.uid);
+  if (orig) orig.estado = 'anulada';
+
+  // Agregar a log
+  auditLog.unshift({
+    hora, lote: etiquetaSel.lote,
+    caja: `${etiquetaSel.caja}/${etiquetaSel.totalCajas}`,
+    motivo: MOTIVOS[motivo] || motivo,
+    supervisor: SUPERVISORS[supId] || supId,
+    uidOrig: etiquetaSel.uid,
+    uidNew: newUid,
+    impresora: printer,
+  });
+
+  renderAuditLog();
+  renderAuditLote(etiquetaSel.lote);
+
+  // Modal éxito
+  document.getElementById('success-details').innerHTML = [
+    { label:'Lote',         val: etiquetaSel.lote },
+    { label:'Caja',         val: `${etiquetaSel.caja} de ${etiquetaSel.totalCajas}` },
+    { label:'Motivo',       val: MOTIVOS[motivo] || motivo },
+    { label:'Autorizado por', val: SUPERVISORS[supId] },
+    { label:'Nuevo UID',    val: newUid },
+    { label:'ID original',  val: `${etiquetaSel.uid} (ANULADO)` },
+    { label:'Impresora',    val: printer },
+  ].map(r => `
+    <div class="flex justify-between text-xs py-1 border-b border-slate-100 last:border-0">
+      <span class="text-slate-400">${r.label}</span>
+      <span class="font-bold text-slate-700 font-mono text-[11px]">${r.val}</span>
+    </div>`).join('');
+
+  document.getElementById('success-modal').classList.remove('hidden');
+  document.getElementById('success-modal').classList.add('flex');
+  showToast('success', `Reimpresión exitosa · ${printer}`);
+}
+
+function cerrarModal() {
+  document.getElementById('success-modal').classList.add('hidden');
+  document.getElementById('success-modal').classList.remove('flex');
+  // Reset
+  document.getElementById('steps234').classList.add('hidden');
+  document.getElementById('scan-input').value = '';
+  etiquetaSel = null;
+  authOk = false;
+  setStep(1);
+}
+
+// ══════════════════════════
+// AUDIT LOG
+// ══════════════════════════
+function renderAuditLog() {
+  document.getElementById('audit-count').textContent = `${auditLog.length} registros`;
+  document.getElementById('audit-tbody').innerHTML = auditLog.map(r => `
+    <tr class="audit-row hover:bg-slate-50 transition-colors">
+      <td class="px-4 py-2.5 font-mono font-bold text-slate-500 text-xs">${r.hora}</td>
+      <td class="px-3 py-2.5 font-mono text-[11px] font-bold text-slate-700">${r.lote}</td>
+      <td class="px-3 py-2.5 text-center text-xs text-slate-600">${r.caja}</td>
+      <td class="px-3 py-2.5 text-xs text-slate-600">${r.motivo}</td>
+      <td class="px-3 py-2.5 text-xs text-slate-600">${r.supervisor}</td>
+      <td class="px-3 py-2.5 font-mono text-[10px] text-red-500">${r.uidOrig}</td>
+      <td class="px-3 py-2.5 font-mono text-[10px] text-green-600 font-bold">${r.uidNew}</td>
+      <td class="px-3 py-2.5 text-center text-[10px] text-slate-500">${r.impresora}</td>
+    </tr>`).join('');
+}
+
+function renderAuditLote(lote) {
+  const logs = auditLog.filter(r => r.lote === lote);
+  const el = document.getElementById('audit-log-lote');
+  if (!logs.length) {
+    el.innerHTML = `<div class="text-[11px] text-slate-400 text-center py-3">Sin reimpresiones previas para este lote</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="space-y-2">${logs.map(r => `
+    <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-mono text-xs font-bold text-slate-600">${r.hora} · Caja ${r.caja}</span>
+        <span class="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Original anulada</span>
+      </div>
+      <div class="text-[10px] text-slate-500">Motivo: <strong>${r.motivo}</strong> · Sup: ${r.supervisor}</div>
+      <div class="text-[10px] font-mono text-slate-400 mt-0.5">
+        <span class="line-through text-red-400">${r.uidOrig}</span>
+        → <span class="text-green-600 font-bold">${r.uidNew}</span>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+// ══════════════════════════
+// STEPS
+// ══════════════════════════
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const circle = document.getElementById(`s${i}-circle`);
+    const label  = document.getElementById(`s${i}-label`);
+    circle.classList.remove('bg-blue-600','bg-green-600','bg-slate-200','text-white','text-slate-400');
+    label.classList.remove('text-blue-700','text-green-700','text-slate-400');
+    if (i < n) {
+      circle.classList.add('bg-green-600','text-white');
+      circle.innerHTML = '✓';
+      label.classList.add('text-green-700');
+    } else if (i === n) {
+      circle.classList.add('bg-blue-600','text-white');
+      circle.innerHTML = i;
+      label.classList.add('text-blue-700');
+    } else {
+      circle.classList.add('bg-slate-200','text-slate-400');
+      circle.innerHTML = i;
+      label.classList.add('text-slate-400');
+    }
+    if (i < 4) {
+      const line = document.getElementById(`line${i}${i+1}`);
+      line.classList.toggle('done', i < n);
+    }
+  }
+}
+
+// ══════════════════════════
+// TOAST
+// ══════════════════════════
+let toastT;
+function showToast(type, msg) {
+  clearTimeout(toastT);
+  const icons = {
+    success:`<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:  `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  };
+  document.getElementById('toast-icon').innerHTML = icons[type] || icons.success;
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast').classList.remove('hidden');
+  toastT = setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3500);
+}
+
+// ══════════════════════════
+// INIT
+// ══════════════════════════
+renderAuditLog();
+</script>
+</body>
+</html>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrazeQ — Dashboard de Producción</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      animation: {
+        'fade-in':   'fadeIn .3s ease',
+        'slide-up':  'slideUp .35s ease',
+        'pulse-dot': 'pulseDot 2s infinite',
+        'count-up':  'countUp .5s ease',
+        'spin-slow': 'spin 1.2s linear infinite',
+      },
+      keyframes: {
+        fadeIn:   { from:{opacity:0}, to:{opacity:1} },
+        slideUp:  { from:{opacity:0,transform:'translateY(12px)'}, to:{opacity:1,transform:'translateY(0)'} },
+        pulseDot: { '0%,100%':{boxShadow:'0 0 0 0 rgba(34,197,94,.4)'},'50%':{boxShadow:'0 0 0 6px rgba(34,197,94,0)'} },
+        countUp:  { from:{opacity:0,transform:'translateY(8px)'}, to:{opacity:1,transform:'translateY(0)'} },
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  .scrollbar-light::-webkit-scrollbar { width: 5px; height: 4px; }
+  .scrollbar-light::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+  /* Progress bar */
+  .prog-fill { transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+  /* KPI hover */
+  .kpi-card { transition: transform .15s, box-shadow .15s; }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+
+  /* Proceso row */
+  .proc-row { transition: background .12s; }
+  .proc-row:hover td { background: #f8fafc !important; }
+  .proc-row.selected td { background: #eff6ff !important; }
+
+  /* Donut SVG */
+  .donut-seg { transition: all .3s; cursor: pointer; }
+  .donut-seg:hover { opacity: .85; transform: scale(1.04); transform-origin: center; }
+
+  /* Alert pulse */
+  @keyframes alertPulse { 0%,100%{background:#fff1f2} 50%{background:#ffe4e6} }
+  .alert-urgent { animation: alertPulse 2s infinite; }
+
+  /* Live dot */
+  .live-dot { animation: pulseDot 2s infinite; }
+
+  /* Minibar dentro de tabla */
+  .minibar-wrap { position: relative; height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; width: 120px; }
+  .minibar-fill  { position: absolute; left:0; top:0; height: 100%; border-radius: 99px; }
+
+  input:focus, select:focus { outline: none; }
+</style>
+</head>
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- ═══════════ SIDEBAR -->
+<aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+  <div class="px-4 py-5 border-b border-white/5">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/>
+        </svg>
+      </div>
+      <div><div class="text-white font-bold text-sm">TrazeQ</div><div class="text-slate-500 text-[10px]">Trazabilidad v2.4</div></div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+    
+    <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2">Principal</div>
+    <a href="dashboard_produccion.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Dashboard
+    </a>
+   
+     <a href="etiquetas_tailwind.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Gestion de Etiquetas
+    </a>
+     <a href="reimpresion_etiquetas.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Re-Impresion de Etiquetas
+    </a>
+
+    <a href="captura_produccion.html"  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Producción
+    </a>
+      
+
+    <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2 mt-3">Control</div>
+
+    <a href="control_calidad.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Calidad
+    </a>
+    
+    <a href="partes_trabajo.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Partes de Trabajo
+    </a>
+
+ <a href="seguimiento_inventario.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>Inventario
+    </a>
+
+    <a href="trazabilidad.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Trazabilidad
+    </a>
+
+  
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes
+    </a>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>Configuración
+    </a>
+
+  </nav>
+
+
+  <div class="px-3 py-3 border-t border-white/5">
+    <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+      <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold">SC</div>
+      <div><div class="text-slate-200 text-xs font-semibold">Sup. Calidad</div><div class="text-slate-500 text-[10px]">Turno 2 · Admin</div></div>
+      <div class="ml-auto w-2 h-2 rounded-full bg-green-500 live-dot"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN -->
+<div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+  <!-- TOPBAR -->
+  <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+    <div>
+      <h1 class="text-base font-extrabold text-slate-800">Dashboard de Producción</h1>
+      <p class="text-[11px] text-slate-400">Monitoreo en tiempo real · Todas las plantas</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
+        <div class="w-2 h-2 rounded-full bg-green-500 live-dot"></div>
+        <span class="text-xs font-bold text-green-700">En vivo</span>
+      </div>
+      <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--</div>
+      <button onclick="refreshData()" class="flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors">
+        <svg class="w-3.5 h-3.5" id="refresh-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Actualizar
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 p-5 space-y-4 animate-fade-in">
+
+    <!-- ═══ FILTROS ═══ -->
+    <div class="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 flex items-center gap-4 flex-wrap">
+      <div class="flex items-center gap-2">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Proceso</label>
+        <select id="f-proceso" onchange="aplicarFiltros()" class="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 cursor-pointer focus:border-blue-400 transition-all">
+          <option value="">Todos</option>
+          <option>Inyectado</option>
+          <option>Metalizado</option>
+          <option>Serigrafiado</option>
+          <option>Pintado</option>
+          <option>Ensamble Final</option>
+          <option>Producto Terminado</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Turno</label>
+        <select id="f-turno" onchange="aplicarFiltros()" class="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 cursor-pointer focus:border-blue-400 transition-all">
+          <option value="">Todos</option>
+          <option value="T1">T1 (06:00–14:00)</option>
+          <option value="T2" selected>T2 (14:00–22:00)</option>
+          <option value="T3">T3 (22:00–06:00)</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fecha</label>
+        <input type="date" id="f-fecha" value="2026-04-15" onchange="aplicarFiltros()" class="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 cursor-pointer focus:border-blue-400 transition-all">
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Estado</label>
+        <select id="f-estado" onchange="aplicarFiltros()" class="border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 cursor-pointer focus:border-blue-400 transition-all">
+          <option value="">Todos</option>
+          <option>En Proceso</option>
+          <option>Completado</option>
+          <option>Detenido</option>
+          <option>En Espera</option>
+        </select>
+      </div>
+      <button onclick="aplicarFiltros()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        Filtrar
+      </button>
+      <button onclick="limpiarFiltros()" class="border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors">Limpiar</button>
+      <div class="ml-auto flex items-center gap-2 text-[11px] text-slate-400">
+        <svg class="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Última actualización: <span id="last-update" class="font-mono font-bold text-slate-600">--:--</span>
+        · Actualización automática cada 60 seg.
+        <div class="w-2 h-2 rounded-full bg-green-500 live-dot ml-1"></div>
+      </div>
+    </div>
+
+    <!-- ═══ KPIs ═══ -->
+    <div class="grid grid-cols-5 gap-3" id="kpi-grid">
+      <!-- Generado por JS -->
+    </div>
+
+    <!-- ═══ MAIN GRID ═══ -->
+    <div class="grid grid-cols-3 gap-4">
+
+      <!-- TABLA POR PROCESO (2/3) -->
+      <div class="col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-800">Estado por Proceso</h3>
+          <div class="flex items-center gap-2 text-[10px] text-slate-400">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>En Proceso</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>Completado</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>Detenido</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>En Espera</span>
+          </div>
+        </div>
+        <div class="overflow-x-auto scrollbar-light">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Proceso</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Órdenes</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Programado</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Producido</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Merma</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">% Avance</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
+              </tr>
+            </thead>
+            <tbody id="proc-tbody" class="divide-y divide-slate-50"></tbody>
+          </table>
+        </div>
+        <!-- Footer -->
+        <div class="px-5 py-2.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+          <span class="text-[11px] text-slate-400" id="proc-footer">—</span>
+          <span class="text-[10px] text-slate-400">Clic en fila para ver detalle de OPs</span>
+        </div>
+      </div>
+
+      <!-- LADO DERECHO -->
+      <div class="flex flex-col gap-4">
+
+        <!-- DONUT CHART -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4">
+          <h3 class="text-sm font-bold text-slate-800 mb-3">Órdenes del Turno</h3>
+          <div class="flex items-center gap-4">
+            <div class="relative flex-shrink-0" style="width:120px;height:120px">
+              <svg viewBox="0 0 120 120" id="donut-svg" width="120" height="120">
+                <!-- generado por JS -->
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-xl font-extrabold text-slate-800" id="donut-center-num">18</span>
+                <span class="text-[9px] text-slate-400 font-medium">órdenes</span>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2 flex-1" id="donut-legend"></div>
+          </div>
+        </div>
+
+        <!-- INDICADORES RÁPIDOS -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+          <h3 class="text-sm font-bold text-slate-800">Indicadores operativos</h3>
+          <div id="indicadores-list" class="space-y-2.5"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ SEGUNDA FILA: OPs detalle + Alertas ═══ -->
+    <div class="grid grid-cols-3 gap-4">
+
+      <!-- OPs activas -->
+      <div class="col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-800">Órdenes de Producción Activas</h3>
+          <span class="text-[11px] text-slate-400" id="ops-count">— OPs</span>
+        </div>
+        <div class="overflow-x-auto scrollbar-light" style="max-height:260px;">
+          <table class="w-full text-xs">
+            <thead class="sticky top-0">
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="px-4 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">OP</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Proceso</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Producto</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Prog.</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Prod.</th>
+                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avance</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">CC</th>
+                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
+              </tr>
+            </thead>
+            <tbody id="ops-tbody" class="divide-y divide-slate-50"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ALERTAS -->
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-800">Alertas activas</h3>
+          <span class="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full" id="alert-count">—</span>
+        </div>
+        <div class="divide-y divide-slate-50 overflow-y-auto scrollbar-light" style="max-height:260px;" id="alertas-list"></div>
+      </div>
+    </div>
+
+    <!-- ═══ BARRA PROGRESO GLOBAL ═══ -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-slate-800">Avance global de producción — Turno 2</h3>
+        <div class="flex items-center gap-2 text-[11px] text-slate-400">
+          <span>Objetivo turno:</span>
+          <span class="font-bold text-slate-700" id="objetivo-txt">—</span>
+        </div>
+      </div>
+      <div id="global-bars" class="space-y-3"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
+  <div class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[240px]">
+    <span id="toast-icon"></span><span id="toast-msg"></span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════
+// CLOCK
+// ═══════════════════════════
+function tick() {
+  const t = new Date().toTimeString().split(' ')[0];
+  document.getElementById('clock').textContent = t;
+}
+setInterval(tick, 1000); tick();
+
+// ═══════════════════════════
+// DATOS
+// ═══════════════════════════
+const PROC_COLOR = {
+  'Inyectado':         {dot:'bg-violet-500', bar:'bg-violet-500', cls:'bg-violet-100 text-violet-700'},
+  'Metalizado':        {dot:'bg-sky-500',    bar:'bg-sky-500',    cls:'bg-sky-100 text-sky-700'},
+  'Serigrafiado':      {dot:'bg-amber-500',  bar:'bg-amber-500',  cls:'bg-amber-100 text-amber-700'},
+  'Pintado':           {dot:'bg-orange-500', bar:'bg-orange-500', cls:'bg-orange-100 text-orange-700'},
+  'Ensamble Final':    {dot:'bg-teal-500',   bar:'bg-teal-500',   cls:'bg-teal-100 text-teal-700'},
+  'Producto Terminado':{dot:'bg-green-600',  bar:'bg-green-600',  cls:'bg-green-100 text-green-700'},
+};
+
+const BASE_PROCESOS = [
+  { proceso:'Inyectado',         ordenes:5, prog:2000, prod:1800, merma:18, estado:'En Proceso'  },
+  { proceso:'Pintado',           ordenes:4, prog:1500, prod:1200, merma:12, estado:'En Proceso'  },
+  { proceso:'Metalizado',        ordenes:3, prog:1200, prod:1000, merma:8,  estado:'En Proceso'  },
+  { proceso:'Serigrafiado',      ordenes:4, prog:1600, prod:1400, merma:20, estado:'En Proceso'  },
+  { proceso:'Ensamble Final',    ordenes:2, prog:800,  prod:600,  merma:4,  estado:'En Proceso'  },
+  { proceso:'Producto Terminado',ordenes:0, prog:0,    prod:0,    merma:0,  estado:'En Espera'   },
+];
+
+const OPS_DATA = [
+  { op:'OP-2024-000156', proceso:'Inyectado',    producto:'CARCASA-PRO-7X', prog:1200, prod:1080, cc:'Aprobado',  estado:'En Proceso' },
+  { op:'OP-2024-000157', proceso:'Metalizado',   producto:'TAPA-5A',        prog:960,  prod:800,  cc:'Aprobado',  estado:'En Proceso' },
+  { op:'OP-2024-000158', proceso:'Serigrafiado', producto:'MARCO-3B',       prog:1600, prod:1400, cc:'Aprobado',  estado:'En Proceso' },
+  { op:'OP-2024-000159', proceso:'Ensamble Final',producto:'PT-2000',       prog:800,  prod:600,  cc:'Pendiente', estado:'En Proceso' },
+  { op:'OP-2024-000160', proceso:'Pintado',      producto:'PANEL-A1',       prog:500,  prod:500,  cc:'Aprobado',  estado:'Completado' },
+  { op:'OP-2024-000161', proceso:'Inyectado',    producto:'CARCASA-LUX',    prog:800,  prod:720,  cc:'Aprobado',  estado:'En Proceso' },
+  { op:'OP-2024-000162', proceso:'Metalizado',   producto:'TAPA-7B',        prog:240,  prod:200,  cc:'Rechazado', estado:'Detenido'   },
+  { op:'OP-2024-000163', proceso:'Pintado',      producto:'MARCO-5X',       prog:700,  prod:580,  cc:'Pendiente', estado:'En Espera'  },
+  { op:'OP-2024-000164', proceso:'Serigrafiado', producto:'BASE-2A',        prog:500,  prod:450,  cc:'Aprobado',  estado:'En Proceso' },
+];
+
+const ALERTAS = [
+  { nivel:'critico', msg:'OP-000162 detenida',    sub:'Metalizado rechazado por CC · 25 min sin movimiento', tiempo:'hace 25 min' },
+  { nivel:'warn',    msg:'Ensamble por debajo del objetivo', sub:'OP-000159 al 75% · objetivo: 85%', tiempo:'hace 12 min' },
+  { nivel:'warn',    msg:'Lote SER-T2-00047 pendiente CC',  sub:'Inspector: sin asignar · espera: 18 min', tiempo:'hace 18 min' },
+  { nivel:'info',    msg:'T1 finalizado correctamente',      sub:'1,280 und producidas · 2 OPs completadas', tiempo:'hace 32 min' },
+  { nivel:'info',    msg:'Impresora TSC-01 sin papel',       sub:'Planta 2 · Portátil Bluetooth', tiempo:'hace 5 min' },
+];
+
+let dataFiltrada = [...BASE_PROCESOS];
+let opsFiltradas  = [...OPS_DATA];
+
+// ═══════════════════════════
+// FILTROS
+// ═══════════════════════════
+function aplicarFiltros() {
+  const proc   = document.getElementById('f-proceso').value;
+  const estado = document.getElementById('f-estado').value;
+
+  dataFiltrada = BASE_PROCESOS.filter(p => {
+    if (proc   && p.proceso !== proc)   return false;
+    if (estado && p.estado  !== estado) return false;
+    return true;
+  });
+
+  opsFiltradas = OPS_DATA.filter(o => {
+    if (proc   && o.proceso !== proc)   return false;
+    if (estado && o.estado  !== estado) return false;
+    return true;
+  });
+
+  renderAll();
+  actualizarTimestamp();
+  showToast('success', `Filtros aplicados · ${dataFiltrada.length} proceso${dataFiltrada.length!==1?'s':''}`);
+}
+
+function limpiarFiltros() {
+  document.getElementById('f-proceso').value = '';
+  document.getElementById('f-turno').value   = 'T2';
+  document.getElementById('f-estado').value  = '';
+  dataFiltrada = [...BASE_PROCESOS];
+  opsFiltradas  = [...OPS_DATA];
+  renderAll();
+  actualizarTimestamp();
+}
+
+function actualizarTimestamp() {
+  document.getElementById('last-update').textContent = new Date().toTimeString().split(' ')[0].slice(0,5);
+}
+
+// ═══════════════════════════
+// RENDER KPIs
+// ═══════════════════════════
+function renderKPIs() {
+  const totOrd  = dataFiltrada.reduce((s,p) => s + p.ordenes, 0);
+  const totProg = dataFiltrada.reduce((s,p) => s + p.prog, 0);
+  const totProd = dataFiltrada.reduce((s,p) => s + p.prod, 0);
+  const totMer  = dataFiltrada.reduce((s,p) => s + p.merma, 0);
+  const pct     = totProg > 0 ? Math.round((totProd/totProg)*100) : 0;
+
+  const kpis = [
+    { label:'Órdenes',    val: totOrd,                  sub:'activas',       color:'text-slate-800', bg:'bg-slate-50',  icon:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>', ic:'text-slate-500' },
+    { label:'Programado', val: totProg.toLocaleString(), sub:'und',           color:'text-slate-800', bg:'bg-blue-50',   icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', ic:'text-blue-400' },
+    { label:'Producido',  val: totProd.toLocaleString(), sub:'und',           color:'text-blue-700',  bg:'bg-blue-50',   icon:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>', ic:'text-blue-500' },
+    { label:'% Avance',   val: pct+'%',                  sub:'del objetivo',  color: pct>=85?'text-green-700':pct>=70?'text-amber-600':'text-red-600', bg: pct>=85?'bg-green-50':pct>=70?'bg-amber-50':'bg-red-50', icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', ic: pct>=85?'text-green-500':pct>=70?'text-amber-500':'text-red-500' },
+    { label:'Merma',      val: totMer.toLocaleString(),  sub:'und rechazadas', color:'text-red-600',  bg:'bg-red-50',    icon:'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>', ic:'text-red-400' },
+  ];
+
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
+    <div class="kpi-card bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3 cursor-default">
+      <div class="w-10 h-10 ${k.bg} rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 ${k.ic}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">${k.icon}</svg>
+      </div>
+      <div>
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${k.label}</div>
+        <div class="text-2xl font-extrabold ${k.color} leading-none animate-count-up">${k.val}</div>
+        <div class="text-[10px] text-slate-400 mt-0.5">${k.sub}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════
+// RENDER TABLA PROCESO
+// ═══════════════════════════
+function renderProcesos() {
+  const tbody = document.getElementById('proc-tbody');
+  const ESTADO_CFG = {
+    'En Proceso': { cls:'bg-green-100 text-green-700',  dot:'bg-green-500' },
+    'Completado': { cls:'bg-blue-100 text-blue-700',    dot:'bg-blue-500'  },
+    'Detenido':   { cls:'bg-red-100 text-red-700',      dot:'bg-red-500'   },
+    'En Espera':  { cls:'bg-amber-100 text-amber-700',  dot:'bg-amber-400' },
+  };
+
+  if (!dataFiltrada.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 text-xs">Sin datos para los filtros seleccionados</td></tr>`;
+    document.getElementById('proc-footer').textContent = '0 procesos';
+    return;
+  }
+
+  const totProg = dataFiltrada.reduce((s,p) => s + p.prog, 0);
+  const totProd = dataFiltrada.reduce((s,p) => s + p.prod, 0);
+  const totMer  = dataFiltrada.reduce((s,p) => s + p.merma, 0);
+
+  tbody.innerHTML = dataFiltrada.map((p, i) => {
+    const pct     = p.prog > 0 ? Math.round((p.prod/p.prog)*100) : 0;
+    const estCfg  = ESTADO_CFG[p.estado] || ESTADO_CFG['En Proceso'];
+    const procCfg = PROC_COLOR[p.proceso] || {bar:'bg-blue-500', cls:'bg-blue-100 text-blue-700'};
+    const barColor = pct >= 85 ? 'bg-green-500' : pct >= 70 ? 'bg-blue-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-400';
+
+    return `
+    <tr class="proc-row" onclick="filtrarPorProceso('${p.proceso}', this)">
+      <td class="px-4 py-3">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full ${procCfg.dot || 'bg-blue-500'} flex-shrink-0"></div>
+          <span class="font-semibold text-slate-800">${p.proceso}</span>
+        </div>
+      </td>
+      <td class="px-3 py-3 text-center font-bold text-slate-700">${p.ordenes}</td>
+      <td class="px-3 py-3 text-center font-mono font-bold text-slate-700">${p.prog.toLocaleString()}</td>
+      <td class="px-3 py-3 text-center font-mono font-bold text-blue-700">${p.prod.toLocaleString()}</td>
+      <td class="px-3 py-3 text-center font-mono ${p.merma > 15 ? 'text-orange-600 font-bold' : 'text-slate-500'}">${p.merma}</td>
+      <td class="px-3 py-3">
+        <div class="flex items-center gap-2">
+          <div class="minibar-wrap">
+            <div class="minibar-fill prog-fill ${barColor}" style="width:${pct}%"></div>
+          </div>
+          <span class="text-[11px] font-extrabold ${pct>=85?'text-green-600':pct>=70?'text-blue-600':pct>=50?'text-amber-600':'text-red-600'} w-9">${pct}%</span>
+        </div>
+      </td>
+      <td class="px-3 py-3 text-center">
+        <span class="text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 w-fit mx-auto ${estCfg.cls}">
+          <div class="w-1.5 h-1.5 rounded-full ${estCfg.dot}"></div>${p.estado}
+        </span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('proc-footer').textContent =
+    `${dataFiltrada.length} procesos · Total: ${totProg.toLocaleString()} prog · ${totProd.toLocaleString()} prod · ${totMer} und merma`;
+}
+
+function filtrarPorProceso(proceso, rowEl) {
+  document.querySelectorAll('.proc-row').forEach(r => r.classList.remove('selected'));
+  rowEl.classList.add('selected');
+
+  const fEl = document.getElementById('f-proceso');
+  if (fEl.value === proceso) {
+    fEl.value = '';
+  } else {
+    fEl.value = proceso;
+  }
+  aplicarFiltros();
+}
+
+// ═══════════════════════════
+// DONUT CHART
+// ═══════════════════════════
+function renderDonut() {
+  const enProceso   = opsFiltradas.filter(o => o.estado === 'En Proceso').length;
+  const completadas = opsFiltradas.filter(o => o.estado === 'Completado').length;
+  const detenidas   = opsFiltradas.filter(o => o.estado === 'Detenido').length;
+  const enEspera    = opsFiltradas.filter(o => o.estado === 'En Espera').length;
+  const total       = opsFiltradas.length || 1;
+
+  const segs = [
+    { label:'En Proceso',  val:enProceso,   color:'#22c55e', pct: enProceso/total   },
+    { label:'Completadas', val:completadas, color:'#3b82f6', pct: completadas/total  },
+    { label:'Detenidas',   val:detenidas,   color:'#ef4444', pct: detenidas/total    },
+    { label:'En Espera',   val:enEspera,    color:'#f59e0b', pct: enEspera/total     },
+  ].filter(s => s.val > 0);
+
+  const cx=60, cy=60, r=48, ir=32;
+  let startAngle = -Math.PI/2;
+  let svgHTML = '';
+
+  segs.forEach(seg => {
+    const angle = seg.pct * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle),   y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + ir * Math.cos(startAngle), iy1 = cy + ir * Math.sin(startAngle);
+    const ix2 = cx + ir * Math.cos(endAngle),   iy2 = cy + ir * Math.sin(endAngle);
+    const large = angle > Math.PI ? 1 : 0;
+    svgHTML += `<path class="donut-seg" d="M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} L${ix2},${iy2} A${ir},${ir} 0 ${large},0 ${ix1},${iy1} Z" fill="${seg.color}" stroke="white" stroke-width="2" title="${seg.label}: ${seg.val}"/>`;
+    startAngle = endAngle;
+  });
+
+  document.getElementById('donut-svg').innerHTML = svgHTML;
+  document.getElementById('donut-center-num').textContent = total === 1 && opsFiltradas.length === 0 ? '0' : opsFiltradas.length;
+
+  // Leyenda
+  document.getElementById('donut-legend').innerHTML = segs.map(s => `
+    <div class="flex items-center gap-2">
+      <div class="w-3 h-3 rounded-sm flex-shrink-0" style="background:${s.color}"></div>
+      <span class="text-[11px] text-slate-600 font-medium flex-1">${s.label}</span>
+      <span class="text-[11px] font-extrabold text-slate-700">${s.val} <span class="text-slate-400 font-normal">(${Math.round(s.pct*100)}%)</span></span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════
+// INDICADORES
+// ═══════════════════════════
+function renderIndicadores() {
+  const totProg = dataFiltrada.reduce((s,p) => s + p.prog, 0) || 1;
+  const totProd = dataFiltrada.reduce((s,p) => s + p.prod, 0);
+  const totMer  = dataFiltrada.reduce((s,p) => s + p.merma, 0);
+  const pct     = Math.round((totProd/totProg)*100);
+  const merPct  = Math.round((totMer/totProd)*100) || 0;
+
+  const indicadores = [
+    { label:'Eficiencia turno',   val:`${pct}%`,                                   bar: pct,     barColor: pct>=85?'bg-green-500':pct>=70?'bg-amber-500':'bg-red-400' },
+    { label:'Tasa de merma',      val:`${merPct}%`,                                bar: merPct,  barColor: merPct<=2?'bg-green-500':merPct<=5?'bg-amber-500':'bg-red-400' },
+    { label:'OPs completadas',    val:`${opsFiltradas.filter(o=>o.estado==='Completado').length} / ${opsFiltradas.length}`, bar: opsFiltradas.length>0?Math.round((opsFiltradas.filter(o=>o.estado==='Completado').length/opsFiltradas.length)*100):0, barColor:'bg-blue-500' },
+    { label:'CC pendientes',      val:`${opsFiltradas.filter(o=>o.cc==='Pendiente').length} lotes`, bar:0, barColor:'bg-amber-400' },
+  ];
+
+  document.getElementById('indicadores-list').innerHTML = indicadores.map(ind => `
+    <div>
+      <div class="flex justify-between mb-1">
+        <span class="text-[10px] text-slate-500 font-medium">${ind.label}</span>
+        <span class="text-[10px] font-bold text-slate-700">${ind.val}</span>
+      </div>
+      <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div class="h-full ${ind.barColor} rounded-full prog-fill" style="width:${ind.bar}%"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════
+// OPs TABLE
+// ═══════════════════════════
+function renderOPs() {
+  const CC_CFG = {
+    Aprobado:  'bg-green-100 text-green-700',
+    Pendiente: 'bg-amber-100 text-amber-700',
+    Rechazado: 'bg-red-100 text-red-700',
+  };
+  const EST_CFG = {
+    'En Proceso': 'bg-green-100 text-green-700',
+    'Completado': 'bg-blue-100 text-blue-700',
+    'Detenido':   'bg-red-100 text-red-700',
+    'En Espera':  'bg-amber-100 text-amber-700',
+  };
+  const PROC_CLS_T = {
+    Inyectado:'bg-violet-100 text-violet-700',Metalizado:'bg-sky-100 text-sky-700',
+    Serigrafiado:'bg-amber-100 text-amber-700',Pintado:'bg-orange-100 text-orange-700',
+    'Ensamble Final':'bg-teal-100 text-teal-700','Producto Terminado':'bg-green-100 text-green-700',
+  };
+
+  document.getElementById('ops-count').textContent = `${opsFiltradas.length} OPs`;
+  document.getElementById('ops-tbody').innerHTML = opsFiltradas.map(o => {
+    const pct = o.prog > 0 ? Math.round((o.prod/o.prog)*100) : 0;
+    const barColor = pct===100?'bg-blue-500':pct>=80?'bg-green-500':pct>=60?'bg-amber-500':'bg-red-400';
+    return `
+    <tr class="hover:bg-slate-50 transition-colors">
+      <td class="px-4 py-2.5 font-mono font-bold text-slate-700 text-[11px]">${o.op}</td>
+      <td class="px-3 py-2.5"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${PROC_CLS_T[o.proceso]||'bg-slate-100 text-slate-600'}">${o.proceso}</span></td>
+      <td class="px-3 py-2.5 text-[11px] text-slate-600">${o.producto}</td>
+      <td class="px-3 py-2.5 text-center font-mono text-[11px] text-slate-600">${o.prog.toLocaleString()}</td>
+      <td class="px-3 py-2.5 text-center font-mono font-bold text-[11px] text-blue-700">${o.prod.toLocaleString()}</td>
+      <td class="px-3 py-2.5">
+        <div class="flex items-center gap-1.5">
+          <div class="minibar-wrap" style="width:80px">
+            <div class="minibar-fill prog-fill ${barColor}" style="width:${pct}%"></div>
+          </div>
+          <span class="text-[10px] font-bold text-slate-600">${pct}%</span>
+        </div>
+      </td>
+      <td class="px-3 py-2.5 text-center"><span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${CC_CFG[o.cc]||'bg-slate-100'}">${o.cc}</span></td>
+      <td class="px-3 py-2.5 text-center"><span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${EST_CFG[o.estado]||'bg-slate-100'}">${o.estado}</span></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" class="text-center py-6 text-slate-400 text-xs">Sin órdenes para los filtros seleccionados</td></tr>`;
+}
+
+// ═══════════════════════════
+// ALERTAS
+// ═══════════════════════════
+function renderAlertas() {
+  const NIVEL = {
+    critico: { bg:'bg-red-50 border-l-4 border-red-400 alert-urgent', dot:'bg-red-500', title:'text-red-700' },
+    warn:    { bg:'bg-amber-50 border-l-4 border-amber-400',           dot:'bg-amber-500', title:'text-amber-700' },
+    info:    { bg:'bg-blue-50 border-l-4 border-blue-300',             dot:'bg-blue-400', title:'text-blue-700' },
+  };
+  document.getElementById('alert-count').textContent = `${ALERTAS.filter(a=>a.nivel!=='info').length} activas`;
+  document.getElementById('alertas-list').innerHTML = ALERTAS.map(a => {
+    const n = NIVEL[a.nivel] || NIVEL.info;
+    return `
+    <div class="px-4 py-3 ${n.bg}">
+      <div class="flex items-start gap-2">
+        <div class="w-2 h-2 rounded-full ${n.dot} flex-shrink-0 mt-1.5"></div>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-bold ${n.title} truncate">${a.msg}</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">${a.sub}</div>
+          <div class="text-[9px] text-slate-400 font-mono mt-1">${a.tiempo}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════
+// BARRAS GLOBALES
+// ═══════════════════════════
+function renderBarrasGlobales() {
+  const totProg = dataFiltrada.reduce((s,p) => s + p.prog, 0);
+  document.getElementById('objetivo-txt').textContent = `${totProg.toLocaleString()} und`;
+
+  document.getElementById('global-bars').innerHTML = dataFiltrada.map(p => {
+    const pct = p.prog > 0 ? Math.round((p.prod/p.prog)*100) : 0;
+    const barColor = pct>=90?'bg-green-500':pct>=75?'bg-blue-500':pct>=60?'bg-amber-500':'bg-red-400';
+    const procCfg  = PROC_COLOR[p.proceso] || {dot:'bg-blue-500'};
+    return `
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full ${procCfg.dot} flex-shrink-0"></div>
+          <span class="text-xs font-semibold text-slate-700 w-36">${p.proceso}</span>
+          <span class="text-[10px] text-slate-400">${p.prod.toLocaleString()} / ${p.prog.toLocaleString()} und</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] text-orange-500 font-medium">${p.merma} und merma</span>
+          <span class="text-xs font-extrabold ${pct>=85?'text-green-600':pct>=70?'text-blue-600':'text-amber-600'} w-10 text-right">${pct}%</span>
+        </div>
+      </div>
+      <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div class="h-full ${barColor} rounded-full prog-fill" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="text-xs text-slate-400 text-center py-4">Sin datos para los filtros seleccionados</div>';
+}
+
+// ═══════════════════════════
+// REFRESH
+// ═══════════════════════════
+function refreshData() {
+  const icon = document.getElementById('refresh-icon');
+  icon.classList.add('animate-spin-slow');
+  setTimeout(() => {
+    icon.classList.remove('animate-spin-slow');
+    actualizarTimestamp();
+    showToast('success', 'Dashboard actualizado correctamente');
+  }, 1000);
+}
+
+function renderAll() {
+  renderKPIs();
+  renderProcesos();
+  renderDonut();
+  renderIndicadores();
+  renderOPs();
+  renderAlertas();
+  renderBarrasGlobales();
+}
+
+// ═══════════════════════════
+// TOAST
+// ═══════════════════════════
+let toastT;
+function showToast(type, msg) {
+  clearTimeout(toastT);
+  const icons = {
+    success:`<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:  `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  };
+  document.getElementById('toast-icon').innerHTML = icons[type]||icons.success;
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast').classList.remove('hidden');
+  toastT = setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3000);
+}
+
+// ═══════════════════════════
+// AUTO-REFRESH 60s
+// ═══════════════════════════
+setInterval(() => { refreshData(); }, 60000);
+
+// ═══════════════════════════
+// INIT
+// ═══════════════════════════
+renderAll();
+actualizarTimestamp();
+</script>
+</body>
+</html>

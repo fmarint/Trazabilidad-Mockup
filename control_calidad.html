@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrazeQ — Control de Calidad</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      animation: {
+        'fade-in':  'fadeIn .3s ease',
+        'slide-up': 'slideUp .35s ease',
+        'slide-right': 'slideRight .3s ease',
+        'pulse-soft': 'pulseSoft 2s infinite',
+        'spin-slow': 'spin 1.2s linear infinite',
+        'pop': 'pop .3s cubic-bezier(.36,.07,.19,.97)',
+      },
+      keyframes: {
+        fadeIn:     { from:{opacity:0},              to:{opacity:1} },
+        slideUp:    { from:{opacity:0,transform:'translateY(14px)'}, to:{opacity:1,transform:'translateY(0)'} },
+        slideRight: { from:{opacity:0,transform:'translateX(-10px)'}, to:{opacity:1,transform:'translateX(0)'} },
+        pulseSoft:  { '0%,100%':{opacity:1},'50%':{opacity:.4} },
+        pop:        { '0%':{transform:'scale(.94)'},'60%':{transform:'scale(1.04)'},'100%':{transform:'scale(1)'} },
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  .scrollbar-thin-light::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin-light::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+
+  /* Flow step connector */
+  .flow-connector { flex: 1; height: 2px; background: #e2e8f0; position: relative; }
+  .flow-connector.done { background: #16a34a; }
+  .flow-connector.active { background: linear-gradient(90deg, #16a34a 50%, #e2e8f0 50%); }
+
+  /* Urgency pulse */
+  @keyframes urgentPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.35); }
+    50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+  }
+  .urgent-pulse { animation: urgentPulse 1.5s infinite; }
+
+  /* Card reveal */
+  @keyframes cardReveal {
+    from { opacity:0; transform: translateY(10px) scale(.97); }
+    to   { opacity:1; transform: translateY(0) scale(1); }
+  }
+  .card-reveal { animation: cardReveal .4s ease forwards; }
+
+  /* Result glow */
+  .glow-green { box-shadow: 0 0 0 3px rgba(22,163,74,.25); }
+  .glow-red   { box-shadow: 0 0 0 3px rgba(220,38,38,.25); }
+  .glow-amber { box-shadow: 0 0 0 3px rgba(217,119,6,.25); }
+
+  select, input, textarea { outline: none; }
+</style>
+</head>
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- ══════════════ SIDEBAR -->
+<aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+  <div class="px-4 py-5 border-b border-white/5">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/>
+        </svg>
+      </div>
+      <div>
+        <div class="text-white font-bold text-sm">TrazeQ</div>
+        <div class="text-slate-500 text-[10px] mt-0.5">Trazabilidad v2.4</div>
+      </div>
+    </div>
+  </div>
+  
+
+  <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+    
+    <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2">Principal</div>
+
+    <a href="dashboard_produccion.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Dashboard
+    </a>
+
+
+     <a href="etiquetas_tailwind.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Gestion de Etiquetas
+    </a>
+     <a href="reimpresion_etiquetas.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Re-Impresion de Etiquetas
+    </a>
+
+    <a href="captura_produccion.html"  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Producción
+    </a>
+      
+
+    <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2 mt-3">Control</div>
+
+    <a href="control_calidad.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Calidad
+      <span class="ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full" id="nav-badge">5</span>
+    </a>
+    
+    <a href="partes_trabajo.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>Partes de Trabajo
+    </a>
+
+ <a href="seguimiento_inventario.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>Inventario
+    </a>
+
+    <a href="trazabilidad.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Trazabilidad
+    </a>
+
+  
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes
+    </a>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>Configuración
+    </a>
+
+  </nav>
+
+  <div class="px-3 py-3 border-t border-white/5">
+    <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+      <div class="w-7 h-7 bg-violet-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold">AQ</div>
+      <div>
+        <div class="text-slate-200 text-xs font-semibold">Ana Quispe</div>
+        <div class="text-slate-500 text-[10px]">Inspector CC · T2</div>
+      </div>
+      <div class="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══════════════ MAIN -->
+<div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+  <!-- TOPBAR -->
+  <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+    <div>
+      <h1 class="text-base font-extrabold text-slate-800">Control de Calidad</h1>
+      <p class="text-[11px] text-slate-400">Inspección de lotes · Pre-registros automáticos</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
+        <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+        <span class="text-xs font-bold text-amber-700">T2 · 14:00–22:00</span>
+      </div>
+      <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- KPI STRIP -->
+  <div class="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4">
+    <div class="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+      <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+      <span class="text-xs font-bold text-red-600" id="kpi-pend">5 pendientes</span>
+    </div>
+    <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+      <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+      <span class="text-xs font-bold text-blue-700" id="kpi-insp">1 en inspección</span>
+    </div>
+    <div class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+      <div class="w-2 h-2 rounded-full bg-green-500"></div>
+      <span class="text-xs font-bold text-green-700" id="kpi-apro">8 aprobados hoy</span>
+    </div>
+    <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+      <div class="w-2 h-2 rounded-full bg-slate-400"></div>
+      <span class="text-xs font-bold text-slate-600" id="kpi-rech">1 rechazado</span>
+    </div>
+    <div class="ml-auto text-[11px] text-slate-400">Actualizado hace <span class="font-bold text-slate-600">32 seg</span></div>
+  </div>
+
+  <!-- CONTENT: dos columnas -->
+  <main class="flex-1 flex gap-0">
+
+    <!-- ══ COLA DE LOTES (izquierda) ══ -->
+    <div class="w-80 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-sm font-bold text-slate-700">Cola de inspección</span>
+        <div class="flex gap-1.5">
+          <button onclick="filtrarCola('todos')" id="filt-todos" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-800 text-white transition-all">Todos</button>
+          <button onclick="filtrarCola('pendiente')" id="filt-pendiente" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all">Pend.</button>
+          <button onclick="filtrarCola('en_inspeccion')" id="filt-en_inspeccion" class="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all">Insp.</button>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto scrollbar-thin-light" id="cola-lista">
+        <!-- Generado por JS -->
+      </div>
+    </div>
+
+    <!-- ══ PANEL INSPECCIÓN (derecha) ══ -->
+    <div class="flex-1 overflow-y-auto scrollbar-thin-light">
+
+      <!-- Placeholder -->
+      <div id="insp-placeholder" class="flex flex-col items-center justify-center h-full text-center px-8 py-20">
+        <div class="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mb-4">
+          <svg class="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+        </div>
+        <p class="text-base font-bold text-slate-500 mb-1">Sin lote seleccionado</p>
+        <p class="text-sm text-slate-400">Seleccione un lote de la cola<br>para iniciar la inspección</p>
+      </div>
+
+      <!-- Panel inspección activo -->
+      <div id="insp-panel" class="hidden p-6 space-y-5 animate-slide-up">
+
+        <!-- Header del lote -->
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inspección de Lote</span>
+              <span id="insp-urgente-badge" class="hidden text-[9px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse-soft">URGENTE</span>
+            </div>
+            <h2 class="text-xl font-extrabold text-slate-800 font-mono" id="insp-lote-title">—</h2>
+          </div>
+          <span id="insp-estado-badge" class="text-xs font-bold px-3 py-1.5 rounded-full">—</span>
+        </div>
+
+        <!-- DOS COLUMNAS -->
+        <div class="grid grid-cols-2 gap-5">
+
+          <!-- Info del Lote -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-7 h-7 bg-slate-100 rounded-xl flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">Información del Lote</h3>
+            </div>
+            <div class="space-y-2.5" id="insp-info-grid">
+              <!-- Generado por JS -->
+            </div>
+          </div>
+
+          <!-- Resultado de Inspección -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-7 h-7 bg-violet-100 rounded-xl flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">Resultado de Inspección</h3>
+            </div>
+
+            <!-- Resultado select -->
+            <div class="mb-4">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Resultado</label>
+              <select id="res-resultado" onchange="onResultadoChange()" class="w-full border-2 border-green-400 bg-green-50 text-green-800 font-bold text-sm rounded-xl px-3 py-2.5 cursor-pointer transition-all">
+                <option value="aprobado">APROBADO</option>
+                <option value="aprobado_parcial">APROBADO PARCIAL</option>
+                <option value="rechazado">RECHAZADO</option>
+              </select>
+            </div>
+
+            <!-- Cantidades -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Cantidad Aprobada</label>
+                <div class="flex items-center gap-1.5">
+                  <input type="number" id="res-aprobada" class="flex-1 border-2 border-green-300 focus:border-green-500 rounded-xl px-3 py-2 text-sm font-bold text-green-800 bg-green-50 text-center transition-all" oninput="onQtyChange('aprobada')">
+                  <span class="text-xs text-slate-400 font-medium">und</span>
+                </div>
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Cantidad Rechazada</label>
+                <div class="flex items-center gap-1.5">
+                  <input type="number" id="res-rechazada" class="flex-1 border-2 border-red-200 focus:border-red-400 rounded-xl px-3 py-2 text-sm font-bold text-red-600 bg-red-50 text-center transition-all" oninput="onQtyChange('rechazada')">
+                  <span class="text-xs text-slate-400 font-medium">und</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nivel de defecto -->
+            <div class="mb-4" id="defecto-section">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Nivel de Defecto</label>
+              <div class="flex gap-2" id="defecto-btns">
+                <button onclick="selDefecto(this,'ninguno')"   data-val="ninguno"   class="def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 border-green-300 bg-green-50 text-green-700">Ninguno</button>
+                <button onclick="selDefecto(this,'leve')"      data-val="leve"      class="def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500">Leve</button>
+                <button onclick="selDefecto(this,'moderado')"  data-val="moderado"  class="def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500">Moderado</button>
+                <button onclick="selDefecto(this,'grave')"     data-val="grave"     class="def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500">Grave</button>
+              </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div>
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Observaciones</label>
+              <textarea id="res-obs" rows="3" placeholder="Sin observaciones"
+                class="w-full border border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2 text-xs text-slate-600 resize-none transition-all"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flujo de Aprobación -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+          <h3 class="text-sm font-bold text-slate-700 mb-4">Flujo de Aprobación</h3>
+          <div class="flex items-center gap-0" id="flujo-steps">
+            <!-- Generado por JS -->
+          </div>
+          <!-- Info contextual -->
+          <div id="flujo-info" class="mt-4 hidden rounded-xl px-4 py-3 flex items-start gap-3">
+            <div id="flujo-info-icon" class="flex-shrink-0 mt-0.5"></div>
+            <p id="flujo-info-text" class="text-xs text-slate-600"></p>
+          </div>
+        </div>
+
+        <!-- BOTONES DECISIÓN -->
+        <div id="botones-decision" class="flex gap-3 justify-end">
+          <button onclick="rechazarLote()" id="btn-rechazar"
+            class="flex items-center gap-2 border-2 border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-sm px-6 py-3 rounded-2xl transition-all active:scale-95">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Rechazar Lote
+          </button>
+          <button onclick="aprobarParcial()" id="btn-parcial"
+            class="flex items-center gap-2 border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-sm px-6 py-3 rounded-2xl transition-all active:scale-95">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Aprobación Parcial
+          </button>
+          <button onclick="aprobarLote()" id="btn-aprobar"
+            class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold text-sm px-8 py-3 rounded-2xl transition-all active:scale-95 shadow-lg shadow-green-200">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Aprobar Lote
+          </button>
+        </div>
+
+        <!-- Resultado final (oculto hasta decisión) -->
+        <div id="resultado-final" class="hidden rounded-2xl p-5 animate-pop">
+          <div class="flex items-center gap-4 mb-4">
+            <div id="rf-icon" class="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"></div>
+            <div>
+              <div id="rf-title" class="text-base font-extrabold"></div>
+              <div id="rf-sub" class="text-xs text-slate-500 mt-0.5"></div>
+            </div>
+          </div>
+          <!-- Pre-registros actualizados -->
+          <div class="grid grid-cols-3 gap-3" id="rf-registros"></div>
+          <div class="flex gap-3 mt-4">
+            <button onclick="siguienteLote()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Siguiente lote
+            </button>
+            <button onclick="resetInsp()" class="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-sm py-2.5 rounded-xl transition-colors">
+              Volver a la cola
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
+  <div class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[260px]">
+    <span id="toast-icon"></span><span id="toast-msg"></span>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════════
+function tick() { document.getElementById('clock').textContent = new Date().toTimeString().split(' ')[0]; }
+setInterval(tick, 1000); tick();
+
+// ══════════════════════════════════════════════
+// DATOS
+// ══════════════════════════════════════════════
+const COLOR_PROCESO = {
+  'Inyectado':         'bg-violet-100 text-violet-700',
+  'Metalizado':        'bg-sky-100 text-sky-700',
+  'Serigrafiado':      'bg-amber-100 text-amber-700',
+  'Pintado':           'bg-orange-100 text-orange-700',
+  'Ensamble':          'bg-teal-100 text-teal-700',
+  'Producto Terminado':'bg-green-100 text-green-700',
+};
+
+const ESTADO_CFG = {
+  pendiente:      { label:'Pendiente',       cls:'bg-amber-100 text-amber-700',  dot:'bg-amber-500' },
+  en_inspeccion:  { label:'En Inspección',   cls:'bg-blue-100 text-blue-700',    dot:'bg-blue-500' },
+  aprobado:       { label:'Aprobado',         cls:'bg-green-100 text-green-700',  dot:'bg-green-500' },
+  aprobado_parcial:{ label:'Apro. Parcial',  cls:'bg-cyan-100 text-cyan-700',    dot:'bg-cyan-500' },
+  rechazado:      { label:'Rechazado',        cls:'bg-red-100 text-red-700',      dot:'bg-red-500' },
+};
+
+let lotes = [
+  { id:1, lote:'INY-T2-20260415-00045', op:'OP-2024-000156', proceso:'Inyectado',   maquina:'INY-03', turno:'T2', fecha:'15/04/2026', operario:'Juan Flores', qty:200, qtyCap:200, estado:'en_inspeccion', minutos:12, urgente:true  },
+  { id:2, lote:'SER-T2-20260415-00047', op:'OP-2024-000158', proceso:'Serigrafiado', maquina:'SER-01', turno:'T2', fecha:'15/04/2026', operario:'Rosa Mamani',  qty:420, qtyCap:420, estado:'pendiente',     minutos:8,  urgente:false },
+  { id:3, lote:'MET-T2-20260415-00046', op:'OP-2024-000157', proceso:'Metalizado',   maquina:'MET-02', turno:'T2', fecha:'15/04/2026', operario:'Carlos Vega',  qty:480, qtyCap:480, estado:'pendiente',     minutos:22, urgente:true  },
+  { id:4, lote:'ENS-T2-20260415-00048', op:'OP-2024-000159', proceso:'Ensamble',     maquina:'ENS-02', turno:'T2', fecha:'15/04/2026', operario:'Luis Torres',  qty:240, qtyCap:240, estado:'pendiente',     minutos:5,  urgente:false },
+  { id:5, lote:'PT-T2-20260415-00049',  op:'OP-2024-000160', proceso:'Producto Terminado', maquina:'ENS-01', turno:'T2', fecha:'15/04/2026', operario:'María Díaz', qty:120, qtyCap:120, estado:'pendiente',  minutos:3,  urgente:false },
+  { id:6, lote:'INY-T1-20260415-00044', op:'OP-2024-000155', proceso:'Inyectado',   maquina:'INY-04', turno:'T1', fecha:'15/04/2026', operario:'Pedro López',  qty:350, qtyCap:350, estado:'aprobado',      minutos:0,  urgente:false },
+  { id:7, lote:'SER-T1-20260415-00043', op:'OP-2024-000154', proceso:'Serigrafiado', maquina:'SER-02', turno:'T1', fecha:'15/04/2026', operario:'Ana Quispe',   qty:280, qtyCap:280, estado:'rechazado',     minutos:0,  urgente:false },
+];
+
+let filtroActivo = 'todos';
+let loteSelId = null;
+let defectoSel = 'ninguno';
+
+// ══════════════════════════════════════════════
+// RENDER COLA
+// ══════════════════════════════════════════════
+function renderCola() {
+  const data = filtroActivo === 'todos' ? lotes
+    : lotes.filter(l => l.estado === filtroActivo);
+
+  const container = document.getElementById('cola-lista');
+  if (!data.length) {
+    container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400">Sin lotes para este filtro</div>`;
+    return;
+  }
+
+  container.innerHTML = data.map(l => {
+    const est  = ESTADO_CFG[l.estado] || ESTADO_CFG.pendiente;
+    const proc = COLOR_PROCESO[l.proceso] || 'bg-slate-100 text-slate-600';
+    const isActive = l.id === loteSelId;
+    const urgClass = l.urgente && l.estado === 'pendiente' ? 'border-l-2 border-l-red-400' : '';
+    return `
+    <div onclick="seleccionarLote(${l.id})"
+      class="px-4 py-3.5 cursor-pointer border-b border-slate-50 transition-all ${isActive ? 'bg-blue-50' : 'hover:bg-slate-50'} ${urgClass}">
+      <div class="flex items-start justify-between mb-1.5">
+        <div class="font-mono text-xs font-bold text-slate-700 truncate flex-1 pr-2">${l.lote}</div>
+        <span class="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${est.cls}">${est.label}</span>
+      </div>
+      <div class="flex items-center gap-2 mb-1.5">
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${proc}">${l.proceso}</span>
+        <span class="text-[10px] text-slate-400">${l.op}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] text-slate-400">${l.operario} · ${l.qty} und</span>
+        ${l.minutos > 0
+          ? `<span class="text-[10px] font-bold ${l.urgente ? 'text-red-500' : 'text-slate-400'}">
+              ${l.urgente ? '⚠ ' : ''}${l.minutos} min</span>`
+          : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // KPIs
+  const pend = lotes.filter(l => l.estado === 'pendiente').length;
+  const insp = lotes.filter(l => l.estado === 'en_inspeccion').length;
+  const apro = lotes.filter(l => l.estado === 'aprobado').length;
+  const rech = lotes.filter(l => l.estado === 'rechazado').length;
+  document.getElementById('kpi-pend').textContent = `${pend} pendientes`;
+  document.getElementById('kpi-insp').textContent = `${insp} en inspección`;
+  document.getElementById('kpi-apro').textContent = `${apro} aprobados hoy`;
+  document.getElementById('kpi-rech').textContent = `${rech} rechazado${rech!==1?'s':''}`;
+  document.getElementById('nav-badge').textContent = pend + insp;
+}
+
+function filtrarCola(f) {
+  filtroActivo = f;
+  ['todos','pendiente','en_inspeccion'].forEach(k => {
+    const btn = document.getElementById('filt-' + k);
+    if (!btn) return;
+    btn.className = k === f
+      ? 'text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-800 text-white transition-all'
+      : 'text-[10px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all';
+  });
+  renderCola();
+}
+
+// ══════════════════════════════════════════════
+// SELECCIONAR LOTE
+// ══════════════════════════════════════════════
+function seleccionarLote(id) {
+  loteSelId = id;
+  const l = lotes.find(x => x.id === id);
+  if (!l) return;
+
+  // Cambiar estado a en_inspeccion si era pendiente
+  if (l.estado === 'pendiente') { l.estado = 'en_inspeccion'; renderCola(); }
+
+  document.getElementById('insp-placeholder').classList.add('hidden');
+  document.getElementById('insp-panel').classList.remove('hidden');
+  document.getElementById('resultado-final').classList.add('hidden');
+  document.getElementById('botones-decision').classList.remove('hidden');
+  document.getElementById('insp-panel').classList.add('animate-slide-up');
+
+  // Titulo y estado
+  document.getElementById('insp-lote-title').textContent = l.lote;
+  const estCfg = ESTADO_CFG[l.estado];
+  const badge = document.getElementById('insp-estado-badge');
+  badge.textContent = estCfg.label;
+  badge.className = `text-xs font-bold px-3 py-1.5 rounded-full ${estCfg.cls}`;
+
+  // Urgente
+  const urgBadge = document.getElementById('insp-urgente-badge');
+  if (l.urgente && (l.estado === 'pendiente' || l.estado === 'en_inspeccion')) {
+    urgBadge.classList.remove('hidden');
+  } else { urgBadge.classList.add('hidden'); }
+
+  // Info grid
+  const campos = [
+    { label:'Lote',              val: `<span class="font-mono text-green-700 font-bold">${l.lote}</span>` },
+    { label:'Orden de Producción', val: l.op },
+    { label:'Proceso',           val: `<span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${COLOR_PROCESO[l.proceso]||''}">${l.proceso}</span>` },
+    { label:'Cantidad Capturada', val: `<span class="font-bold">${l.qtyCap} und</span>` },
+    { label:'Máquina',           val: l.maquina },
+    { label:'Fecha',             val: l.fecha },
+    { label:'Turno',             val: l.turno },
+    { label:'Operario',          val: l.operario },
+  ];
+  document.getElementById('insp-info-grid').innerHTML = campos.map(c => `
+    <div class="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+      <span class="text-[11px] text-slate-400 font-medium">${c.label}</span>
+      <span class="text-[11px] text-slate-700">${c.val}</span>
+    </div>`).join('');
+
+  // Cantidades iniciales
+  document.getElementById('res-aprobada').value = l.qtyCap;
+  document.getElementById('res-rechazada').value = 0;
+  document.getElementById('res-obs').value = '';
+  document.getElementById('res-resultado').value = 'aprobado';
+  onResultadoChange();
+
+  // Reset defecto
+  defectoSel = 'ninguno';
+  document.querySelectorAll('.def-btn').forEach(b => {
+    const v = b.dataset.val;
+    if (v === 'ninguno') {
+      b.className = 'def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 border-green-300 bg-green-50 text-green-700';
+    } else {
+      b.className = 'def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-500';
+    }
+  });
+
+  renderFlujo(l);
+  renderCola();
+}
+
+// ══════════════════════════════════════════════
+// FLUJO DE APROBACIÓN
+// ══════════════════════════════════════════════
+function renderFlujo(l) {
+  const steps = [
+    { n:1, label:'Captura Producción', sub:'Completado',   estado:'done'   },
+    { n:2, label:'Control de Calidad', sub:'Aprobado',     estado: l.estado === 'aprobado' || l.estado === 'aprobado_parcial' ? 'done' : 'active' },
+    { n:3, label:'Inventario',         sub: l.estado === 'aprobado' ? 'Confirmado' : 'Pendiente', estado: l.estado === 'aprobado' ? 'done' : 'idle' },
+    { n:4, label:'Parte de Trabajo',   sub: l.estado === 'aprobado' ? 'Confirmado' : 'Pendiente', estado: l.estado === 'aprobado' ? 'done' : 'idle' },
+  ];
+
+  const colorMap = {
+    done:   { circle:'bg-green-600 text-white', sub:'text-green-600 font-bold' },
+    active: { circle:'bg-blue-600 text-white',  sub:'text-blue-600 font-bold'  },
+    idle:   { circle:'bg-slate-200 text-slate-500', sub:'text-slate-400'       },
+  };
+
+  document.getElementById('flujo-steps').innerHTML = steps.map((s, i) => `
+    <div class="flex items-center ${i < steps.length - 1 ? 'flex-1' : ''}">
+      <div class="flex flex-col items-center min-w-max">
+        <div class="w-8 h-8 rounded-full ${colorMap[s.estado].circle} flex items-center justify-center text-xs font-extrabold mb-1 transition-all">
+          ${s.estado === 'done' ? '✓' : s.n}
+        </div>
+        <span class="text-[10px] font-bold text-slate-700 whitespace-nowrap">${s.label}</span>
+        <span class="text-[10px] ${colorMap[s.estado].sub} mt-0.5">${s.sub}</span>
+      </div>
+      ${i < steps.length - 1
+        ? `<div class="flow-connector mx-2 mb-4 ${s.estado === 'done' ? 'done' : ''}"></div>
+           <svg class="w-4 h-4 text-slate-300 mb-4 flex-shrink-0 ${s.estado === 'done' ? 'text-green-500' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`
+        : ''}
+    </div>`
+  ).join('');
+
+  // Info contextual
+  const info = document.getElementById('flujo-info');
+  const infoText = document.getElementById('flujo-info-text');
+  const infoIcon = document.getElementById('flujo-info-icon');
+  if (l.estado === 'pendiente' || l.estado === 'en_inspeccion') {
+    info.className = 'mt-4 rounded-xl px-4 py-3 flex items-start gap-3 bg-blue-50 border border-blue-200';
+    infoIcon.innerHTML = `<svg class="w-4 h-4 text-blue-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    infoText.textContent = 'Al aprobar: el inventario ERP se confirmará automáticamente y el parte de trabajo quedará disponible para el supervisor. Al rechazar: las cajas quedarán bloqueadas.';
+    info.classList.remove('hidden');
+  } else if (l.estado === 'rechazado') {
+    info.className = 'mt-4 rounded-xl px-4 py-3 flex items-start gap-3 bg-red-50 border border-red-200';
+    infoIcon.innerHTML = `<svg class="w-4 h-4 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>`;
+    infoText.textContent = 'Lote rechazado. Las cajas están bloqueadas y no pueden avanzar al siguiente proceso. El pre-registro de inventario ha sido anulado.';
+    info.classList.remove('hidden');
+  } else { info.classList.add('hidden'); }
+}
+
+// ══════════════════════════════════════════════
+// RESULTADO SELECT CHANGE
+// ══════════════════════════════════════════════
+function onResultadoChange() {
+  const val = document.getElementById('res-resultado').value;
+  const sel = document.getElementById('res-resultado');
+  const l = lotes.find(x => x.id === loteSelId);
+  if (!l) return;
+
+  const styles = {
+    aprobado:        'border-green-400 bg-green-50 text-green-800',
+    aprobado_parcial:'border-amber-400 bg-amber-50 text-amber-800',
+    rechazado:       'border-red-400 bg-red-50 text-red-800',
+  };
+  sel.className = `w-full border-2 ${styles[val]} font-bold text-sm rounded-xl px-3 py-2.5 cursor-pointer transition-all`;
+
+  if (val === 'aprobado') {
+    document.getElementById('res-aprobada').value  = l.qtyCap;
+    document.getElementById('res-rechazada').value = 0;
+  } else if (val === 'rechazado') {
+    document.getElementById('res-aprobada').value  = 0;
+    document.getElementById('res-rechazada').value = l.qtyCap;
+  } else {
+    document.getElementById('res-aprobada').value  = Math.round(l.qtyCap * 0.75);
+    document.getElementById('res-rechazada').value = Math.round(l.qtyCap * 0.25);
+  }
+}
+
+function onQtyChange(tipo) {
+  const l = lotes.find(x => x.id === loteSelId);
+  if (!l) return;
+  const total = l.qtyCap;
+  if (tipo === 'aprobada') {
+    const apro = Math.min(total, parseInt(document.getElementById('res-aprobada').value) || 0);
+    document.getElementById('res-rechazada').value = Math.max(0, total - apro);
+  } else {
+    const rech = Math.min(total, parseInt(document.getElementById('res-rechazada').value) || 0);
+    document.getElementById('res-aprobada').value = Math.max(0, total - rech);
+  }
+}
+
+// ══════════════════════════════════════════════
+// DEFECTO
+// ══════════════════════════════════════════════
+function selDefecto(btn, val) {
+  defectoSel = val;
+  const colors = {
+    ninguno:  'border-green-300 bg-green-50 text-green-700',
+    leve:     'border-amber-300 bg-amber-50 text-amber-700',
+    moderado: 'border-orange-300 bg-orange-50 text-orange-700',
+    grave:    'border-red-300 bg-red-50 text-red-700',
+  };
+  document.querySelectorAll('.def-btn').forEach(b => {
+    const v = b.dataset.val;
+    b.className = `def-btn flex-1 text-[10px] font-bold py-2 rounded-xl border-2 transition-all ${
+      v === val ? colors[v] : 'border-slate-200 bg-slate-50 text-slate-500'
+    }`;
+  });
+}
+
+// ══════════════════════════════════════════════
+// APROBAR
+// ══════════════════════════════════════════════
+function aprobarLote() {
+  const l = lotes.find(x => x.id === loteSelId);
+  if (!l) return;
+  const apro = parseInt(document.getElementById('res-aprobada').value) || 0;
+  ejecutarDecision('aprobado', apro, l.qtyCap - apro, l);
+}
+
+function aprobarParcial() {
+  const l = lotes.find(x => x.id === loteSelId);
+  if (!l) return;
+  const apro = parseInt(document.getElementById('res-aprobada').value) || 0;
+  ejecutarDecision('aprobado_parcial', apro, l.qtyCap - apro, l);
+}
+
+function rechazarLote() {
+  const l = lotes.find(x => x.id === loteSelId);
+  if (!l) return;
+  ejecutarDecision('rechazado', 0, l.qtyCap, l);
+}
+
+function ejecutarDecision(tipo, apro, rech, l) {
+  // Animar botones
+  ['btn-aprobar','btn-rechazar','btn-parcial'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.disabled = true; b.classList.add('opacity-40','cursor-not-allowed'); }
+  });
+  showToast('loading', 'Procesando decisión...');
+
+  setTimeout(() => {
+    l.estado = tipo;
+    renderCola();
+    renderFlujo(l);
+
+    // Actualizar badge del lote
+    const estCfg = ESTADO_CFG[tipo];
+    const badge = document.getElementById('insp-estado-badge');
+    badge.textContent = estCfg.label;
+    badge.className = `text-xs font-bold px-3 py-1.5 rounded-full ${estCfg.cls}`;
+
+    mostrarResultadoFinal(tipo, apro, rech, l);
+
+    const msg = {
+      aprobado:         `✓ Lote aprobado · ${apro} und confirmadas en inventario`,
+      aprobado_parcial: `◑ Aprobación parcial · ${apro} und aprobadas · ${rech} retenidas`,
+      rechazado:        `✕ Lote rechazado · Cajas bloqueadas`,
+    }[tipo];
+    showToast(tipo === 'rechazado' ? 'error' : 'success', msg);
+  }, 1200);
+}
+
+function mostrarResultadoFinal(tipo, apro, rech, l) {
+  const rf = document.getElementById('resultado-final');
+  const icon = document.getElementById('rf-icon');
+  const title = document.getElementById('rf-title');
+  const sub = document.getElementById('rf-sub');
+  const regs = document.getElementById('rf-registros');
+
+  const cfgs = {
+    aprobado: {
+      bg: 'bg-green-50 border border-green-200',
+      iconBg: 'bg-green-100',
+      iconSvg: `<svg class="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+      titleCls: 'text-green-800', titleText: `Lote aprobado — ${apro} piezas`,
+      subText: 'Inventario ERP confirmado · Parte de trabajo disponible',
+    },
+    aprobado_parcial: {
+      bg: 'bg-amber-50 border border-amber-200',
+      iconBg: 'bg-amber-100',
+      iconSvg: `<svg class="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>`,
+      titleCls: 'text-amber-800', titleText: `Aprobación parcial — ${apro} aprobadas / ${rech} retenidas`,
+      subText: `${rech} piezas retenidas para segunda inspección`,
+    },
+    rechazado: {
+      bg: 'bg-red-50 border border-red-200',
+      iconBg: 'bg-red-100',
+      iconSvg: `<svg class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+      titleCls: 'text-red-800', titleText: `Lote rechazado — ${l.qtyCap} piezas bloqueadas`,
+      subText: 'Pre-registro ERP anulado · Cajas bloqueadas en el sistema',
+    },
+  };
+  const c = cfgs[tipo];
+  rf.className = `rounded-2xl p-5 animate-pop ${c.bg}`;
+  icon.className = `w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${c.iconBg}`;
+  icon.innerHTML = c.iconSvg;
+  title.className = `text-base font-extrabold ${c.titleCls}`;
+  title.textContent = c.titleText;
+  sub.textContent = c.subText;
+
+  // Registros actualizados
+  const regData = [
+    {
+      label:'Inventario ERP',
+      icon:`<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
+      estado: tipo === 'aprobado' ? 'CONFIRMADO' : tipo === 'rechazado' ? 'ANULADO' : 'PARCIAL',
+      estCls: tipo === 'aprobado' ? 'bg-green-100 text-green-700' : tipo === 'rechazado' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700',
+      detail: tipo === 'rechazado' ? 'PRE-28842 anulado' : `${apro} und confirmadas`,
+    },
+    {
+      label:'Control de Calidad',
+      icon:`<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>`,
+      estado: ESTADO_CFG[tipo]?.label || tipo,
+      estCls: ESTADO_CFG[tipo]?.cls || 'bg-slate-100 text-slate-600',
+      detail: `Defecto: ${defectoSel}`,
+    },
+    {
+      label:'Parte de Trabajo',
+      icon:`<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>`,
+      estado: tipo === 'rechazado' ? 'DESCONTADO' : 'ACREDITADO',
+      estCls: tipo === 'rechazado' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700',
+      detail: tipo === 'rechazado' ? `${l.qtyCap} und descontadas` : `${apro} und acreditadas`,
+    },
+  ];
+
+  regs.innerHTML = regData.map(r => `
+    <div class="bg-white rounded-xl border border-slate-200 p-3">
+      <div class="flex items-center gap-1.5 text-slate-500 mb-2">${r.icon}<span class="text-[10px] font-bold">${r.label}</span></div>
+      <span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${r.estCls}">${r.estado}</span>
+      <div class="text-[10px] text-slate-400 mt-1.5 font-mono">${r.detail}</div>
+    </div>`).join('');
+
+  document.getElementById('botones-decision').classList.add('hidden');
+  rf.classList.remove('hidden');
+}
+
+// ══════════════════════════════════════════════
+// SIGUIENTE / RESET
+// ══════════════════════════════════════════════
+function siguienteLote() {
+  const pendientes = lotes.filter(l => l.estado === 'pendiente' || l.estado === 'en_inspeccion');
+  if (!pendientes.length) { resetInsp(); showToast('info', 'No hay más lotes pendientes'); return; }
+  seleccionarLote(pendientes[0].id);
+}
+
+function resetInsp() {
+  loteSelId = null;
+  document.getElementById('insp-placeholder').classList.remove('hidden');
+  document.getElementById('insp-panel').classList.add('hidden');
+  renderCola();
+}
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+let toastTimer;
+function showToast(type, msg) {
+  clearTimeout(toastTimer);
+  const toast = document.getElementById('toast');
+  const icons = {
+    success: `<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:   `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    loading: `<svg class="w-4 h-4 text-blue-400 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
+    info:    `<svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>`,
+  };
+  document.getElementById('toast-icon').innerHTML = icons[type] || icons.info;
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.remove('hidden');
+  if (type !== 'loading') toastTimer = setTimeout(() => toast.classList.add('hidden'), 3500);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+renderCola();
+// Auto-seleccionar el lote en inspección
+const enInsp = lotes.find(l => l.estado === 'en_inspeccion');
+if (enInsp) setTimeout(() => seleccionarLote(enInsp.id), 300);
+</script>
+</body>
+</html>

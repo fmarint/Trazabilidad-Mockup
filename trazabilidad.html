@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrazeQ — Trazabilidad de Lotes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      animation: {
+        'fade-in':  'fadeIn .3s ease',
+        'slide-up': 'slideUp .35s ease',
+        'pop':      'pop .3s cubic-bezier(.36,.07,.19,.97)',
+        'spin-slow':'spin 1s linear infinite',
+        'scan-beam':'scanBeam 1.6s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn:   { from:{opacity:0}, to:{opacity:1} },
+        slideUp:  { from:{opacity:0,transform:'translateY(14px)'}, to:{opacity:1,transform:'translateY(0)'} },
+        pop:      { '0%':{transform:'scale(.94)'},'60%':{transform:'scale(1.04)'},'100%':{transform:'scale(1)'} },
+        scanBeam: { '0%,100%':{top:'6px',opacity:.9},'50%':{top:'40px',opacity:.3} },
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  .scrollbar-light::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scrollbar-light::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+
+  /* Scanner */
+  .scan-beam-line {
+    position: absolute; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, #22c55e, transparent);
+    animation: scanBeam 1.6s ease-in-out infinite;
+  }
+  .bracket { position:absolute; width:13px; height:13px; }
+  .bracket-tl { top:0;left:0; border-top:2.5px solid currentColor; border-left:2.5px solid currentColor; border-radius:2px 0 0 0; }
+  .bracket-tr { top:0;right:0; border-top:2.5px solid currentColor; border-right:2.5px solid currentColor; border-radius:0 2px 0 0; }
+  .bracket-bl { bottom:0;left:0; border-bottom:2.5px solid currentColor; border-left:2.5px solid currentColor; border-radius:0 0 0 2px; }
+  .bracket-br { bottom:0;right:0; border-bottom:2.5px solid currentColor; border-right:2.5px solid currentColor; border-radius:0 0 2px 0; }
+
+  /* Árbol */
+  .tree-svg { overflow: visible; }
+  .tree-node-box {
+    cursor: pointer;
+    transition: all .2s;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.08));
+  }
+  .tree-node-box:hover { filter: drop-shadow(0 4px 12px rgba(0,0,0,.18)); transform: translateY(-2px); }
+  .tree-node-box.selected { filter: drop-shadow(0 0 0 3px rgba(37,99,235,.5)) drop-shadow(0 4px 12px rgba(0,0,0,.2)); }
+
+  /* Timeline */
+  .tl-line { position:absolute; left:20px; top:0; bottom:0; width:2px; background:#e2e8f0; }
+  .tl-dot  { position:absolute; left:12px; width:16px; height:16px; border-radius:50%; border:2px solid white; }
+
+  /* Row hover */
+  .result-row { cursor:pointer; transition:background .12s; }
+  .result-row:hover td { background:#eff6ff !important; }
+  .result-row.active td { background:#dbeafe !important; }
+
+  input:focus, select:focus { outline:none; }
+
+  /* Direction tabs */
+  .dir-tab { transition: all .15s; }
+  .dir-tab.active { background: #1d4ed8; color: #fff; }
+
+  /* Proceso colors */
+  .pc-INY { background:#ede9fe; color:#6d28d9; border-color:#c4b5fd; }
+  .pc-MET { background:#e0f2fe; color:#0369a1; border-color:#7dd3fc; }
+  .pc-SER { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+  .pc-PIN { background:#ffedd5; color:#c2410c; border-color:#fdba74; }
+  .pc-ENS { background:#ccfbf1; color:#0f766e; border-color:#5eead4; }
+  .pc-PT  { background:#dcfce7; color:#15803d; border-color:#86efac; }
+
+  /* Tooltip */
+  .tooltip-box {
+    position: absolute; z-index: 100; pointer-events: none;
+    background: #1e293b; color: #f1f5f9;
+    border-radius: 10px; padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; line-height: 1.6;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    min-width: 200px;
+    transition: opacity .15s;
+  }
+</style>
+</head>
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- ═══════ SIDEBAR -->
+<aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+  <div class="px-4 py-5 border-b border-white/5">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/>
+        </svg>
+      </div>
+      <div><div class="text-white font-bold text-sm">TrazeQ</div><div class="text-slate-500 text-[10px] mt-0.5">Trazabilidad v2.4</div></div>
+    </div>
+  </div>
+
+  <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+
+      <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2">Principal</div>
+
+      <a href="dashboard_produccion.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>Dashboard
+      </a>
+
+      <a href="etiquetas_tailwind.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>Gestion de Etiquetas
+      </a>
+
+      <a href="reimpresion_etiquetas.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>Re-Impresion Etiquetas
+      </a>
+
+      <a href="captura_produccion.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>Producción
+      </a>
+
+      <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2 mt-3">Control</div>
+      <a href="control_calidad.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="20 6 9 17 4 12" />
+        </svg>Calidad
+      </a>
+
+      <a href="partes_trabajo.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+          <line x1="8" y1="16" x2="12" y2="16" />
+        </svg>Partes de Trabajo
+      </a>
+
+       <a href="seguimiento_inventario.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>Inventario
+    </a>
+
+      <a href="trazabilidad.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Trazabilidad
+    </a>
+
+      <a
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>Reportes
+      </a>
+      <a
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+        </svg>Configuración
+      </a>
+
+    </nav>
+
+  <div class="px-3 py-3 border-t border-white/5">
+    <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+      <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold">SC</div>
+      <div><div class="text-slate-200 text-xs font-semibold">Supervisor CC</div><div class="text-slate-500 text-[10px]">Turno 2 · Calidad</div></div>
+      <div class="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════ MAIN -->
+<div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+  <!-- TOPBAR -->
+  <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+    <div>
+      <h1 class="text-base font-extrabold text-slate-800">Trazabilidad de Lotes</h1>
+      <p class="text-[11px] text-slate-400">Consulta genealógica · Regresiva y progresiva · Exportación PDF/Excel</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-1.5">
+        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span class="text-xs font-bold text-blue-700">Motor de trazabilidad activo</span>
+      </div>
+      <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <main class="flex-1 p-5 space-y-4">
+
+    <!-- ══ BUSCADOR ══ -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="flex items-start gap-4">
+
+        <!-- Scanner icon -->
+        <div class="relative w-14 h-12 bg-slate-50 border-2 border-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div class="bracket bracket-tl text-blue-400"></div>
+          <div class="bracket bracket-tr text-blue-400"></div>
+          <div class="bracket bracket-bl text-blue-400"></div>
+          <div class="bracket bracket-br text-blue-400"></div>
+          <div class="scan-beam-line"></div>
+          <svg class="w-6 h-6 text-blue-300 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+
+        <!-- Inputs -->
+        <div class="flex-1 space-y-3">
+          <div class="flex gap-3">
+            <!-- Tipo de búsqueda -->
+            <select id="search-type" class="border-2 border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 bg-slate-50 cursor-pointer transition-all flex-shrink-0 w-44">
+              <option value="lote">Por Lote</option>
+              <option value="op">Por Orden de Producción</option>
+              <option value="producto">Por Código de Producto</option>
+              <option value="proceso">Por Proceso</option>
+              <option value="operario">Por Operario</option>
+              <option value="caja">Por Código de Caja</option>
+              <option value="fecha">Por Fecha</option>
+            </select>
+            <!-- Input -->
+            <input type="text" id="search-input" placeholder="Ingrese el código o escanee la caja..."
+              class="flex-1 border-2 border-blue-300 focus:border-blue-500 bg-blue-50 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all"
+              onkeydown="if(event.key==='Enter') buscar()">
+            <!-- Dirección -->
+            <div class="flex border-2 border-slate-200 rounded-xl overflow-hidden flex-shrink-0">
+              <button id="dir-regresiva" onclick="setDir('regresiva')" class="dir-tab active px-3 py-2 text-xs font-bold transition-all">
+                ← Regresiva
+              </button>
+              <button id="dir-progresiva" onclick="setDir('progresiva')" class="dir-tab px-3 py-2 text-xs font-bold bg-slate-50 text-slate-500 transition-all">
+                Progresiva →
+              </button>
+            </div>
+            <button onclick="buscar()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl flex items-center gap-2 transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Buscar
+            </button>
+          </div>
+          <!-- Filtros adicionales -->
+          <div class="flex gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Fecha desde</label>
+              <input type="date" id="f-desde" value="2026-04-15" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-600 cursor-pointer">
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Hasta</label>
+              <input type="date" id="f-hasta" value="2026-04-15" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-600 cursor-pointer">
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Proceso</label>
+              <select id="f-proceso" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-600 cursor-pointer">
+                <option value="">Todos</option>
+                <option>Inyectado</option><option>Metalizado</option><option>Serigrafiado</option>
+                <option>Pintado</option><option>Ensamble</option><option>Producto Terminado</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Turno</label>
+              <select id="f-turno" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-600 cursor-pointer">
+                <option value="">Todos</option>
+                <option>T1</option><option selected>T2</option><option>T3</option>
+              </select>
+            </div>
+            <button onclick="simBusqueda()" class="ml-auto text-xs text-blue-600 hover:text-blue-800 font-semibold border border-blue-200 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all">
+              Demo: cargar ejemplo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estado búsqueda -->
+      <div id="search-status" class="hidden mt-3 flex items-center gap-2 text-xs text-slate-500">
+        <svg class="w-3.5 h-3.5 animate-spin-slow text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        Buscando...
+      </div>
+    </div>
+
+    <!-- ══ LISTADO DE RESULTADOS ══ -->
+    <div id="results-section" class="hidden animate-slide-up">
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <h3 class="text-sm font-bold text-slate-800">Resultados de búsqueda</h3>
+            <span class="text-[11px] text-slate-400" id="res-count">— resultados</span>
+            <span id="dir-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Regresiva ←</span>
+          </div>
+          <div class="text-[11px] text-slate-400">Haga clic en una fila para ver el árbol de trazabilidad</div>
+        </div>
+        <div class="overflow-x-auto scrollbar-light">
+          <table class="w-full text-xs min-w-[880px]">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">OP</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Proceso</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Producto</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cantidad</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cajas</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fecha / Turno</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">CC</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
+                <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Niveles árbol</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody" class="divide-y divide-slate-50"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DETALLE TRAZABILIDAD ══ -->
+    <div id="detail-section" class="hidden animate-slide-up">
+      <div class="flex gap-4">
+
+        <!-- Panel izquierdo: info + timeline -->
+        <div class="w-72 flex-shrink-0 space-y-4">
+
+          <!-- Info lote -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-bold text-slate-700">Lote seleccionado</h3>
+              <button onclick="cerrarDetalle()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="space-y-2" id="det-info"></div>
+          </div>
+
+          <!-- Dirección activa -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4">
+            <h3 class="text-xs font-bold text-slate-600 mb-2">Dirección de trazabilidad</h3>
+            <div id="det-dir-info" class="rounded-xl p-3 text-xs font-medium"></div>
+          </div>
+
+          <!-- Timeline de eventos -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4">
+            <h3 class="text-sm font-bold text-slate-700 mb-3">Historial de eventos</h3>
+            <div class="relative pl-10" id="timeline">
+              <div class="tl-line"></div>
+            </div>
+          </div>
+
+          <!-- Exportar -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-2">
+            <h3 class="text-xs font-bold text-slate-600 mb-2">Exportar reporte</h3>
+            <button onclick="exportar('pdf')" class="w-full flex items-center gap-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold py-2.5 px-3 rounded-xl transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Exportar PDF
+            </button>
+            <button onclick="exportar('excel')" class="w-full flex items-center gap-2.5 bg-green-50 hover:bg-green-100 border border-green-200 text-green-700 text-xs font-bold py-2.5 px-3 rounded-xl transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              Exportar Excel
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel derecho: árbol -->
+        <div class="flex-1 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <h3 class="text-sm font-bold text-slate-800">Árbol de Trazabilidad</h3>
+              <span class="text-[11px] text-slate-400" id="tree-lote-title">—</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <!-- Leyenda -->
+              <div class="flex items-center gap-3 text-[10px]">
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-violet-100 border border-violet-400 inline-block"></span>Componente</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-sky-100 border border-sky-400 inline-block"></span>Intermedio</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-green-100 border border-green-400 inline-block"></span>Producto Final</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-amber-100 border border-amber-400 inline-block"></span>Proceso</span>
+              </div>
+              <!-- Zoom -->
+              <div class="flex border border-slate-200 rounded-lg overflow-hidden">
+                <button onclick="zoom(-0.15)" class="px-2 py-1 text-slate-500 hover:bg-slate-100 text-sm font-bold transition-colors">−</button>
+                <span class="px-2 py-1 text-[10px] text-slate-500 font-mono border-x border-slate-200" id="zoom-label">100%</span>
+                <button onclick="zoom(0.15)" class="px-2 py-1 text-slate-500 hover:bg-slate-100 text-sm font-bold transition-colors">+</button>
+              </div>
+            </div>
+          </div>
+          <!-- Canvas del árbol -->
+          <div class="overflow-auto scrollbar-light" style="height:520px; position:relative;" id="tree-container">
+            <svg id="tree-svg" style="min-width:800px; min-height:480px;" class="tree-svg"></svg>
+            <!-- Tooltip -->
+            <div id="node-tooltip" class="tooltip-box hidden" style="top:0;left:0;opacity:0;transition:opacity .15s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ EMPTY STATE ══ -->
+    <div id="empty-state" class="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+      <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-10 h-10 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <h2 class="text-lg font-bold text-slate-600 mb-2">Consulta de trazabilidad</h2>
+      <p class="text-sm text-slate-400 max-w-md mx-auto mb-6">Busque por lote, orden de producción, código de producto, proceso u operario para ver el árbol genealógico completo y el historial de la cadena productiva.</p>
+      <div class="grid grid-cols-3 gap-3 max-w-xl mx-auto text-xs">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-left">
+          <div class="font-bold text-slate-700 mb-1">← Regresiva</div>
+          <div class="text-slate-400">Dado un PT, muestra todos los componentes y procesos de origen hasta la materia prima</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-left">
+          <div class="font-bold text-slate-700 mb-1">→ Progresiva</div>
+          <div class="text-slate-400">Dado un componente, muestra todos los productos terminados que lo contienen</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-left">
+          <div class="font-bold text-slate-700 mb-1">⎙ Exportar</div>
+          <div class="text-slate-400">Genera reporte PDF o Excel para auditorías, certificaciones y reclamos</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
+  <div class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[240px]">
+    <span id="toast-icon"></span><span id="toast-msg"></span>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════
+// CLOCK
+// ═══════════════════════════════
+function tick() { document.getElementById('clock').textContent = new Date().toTimeString().split(' ')[0]; }
+setInterval(tick, 1000); tick();
+
+// ═══════════════════════════════
+// CONFIG
+// ═══════════════════════════════
+const PROC_CLS = {
+  Inyectado:'pc-INY', Metalizado:'pc-MET', Serigrafiado:'pc-SER',
+  Pintado:'pc-PIN', Ensamble:'pc-ENS', 'Producto Terminado':'pc-PT'
+};
+const PROC_COLOR_FILL = {
+  Inyectado:'#ede9fe', Metalizado:'#e0f2fe', Serigrafiado:'#fef3c7',
+  Pintado:'#ffedd5', Ensamble:'#ccfbf1', 'Producto Terminado':'#dcfce7'
+};
+const PROC_COLOR_STROKE = {
+  Inyectado:'#8b5cf6', Metalizado:'#0ea5e9', Serigrafiado:'#f59e0b',
+  Pintado:'#f97316', Ensamble:'#14b8a6', 'Producto Terminado':'#22c55e'
+};
+
+let dirActiva = 'regresiva';
+let zoomLevel = 1;
+let nodeSelected = null;
+
+// ═══════════════════════════════
+// DATOS
+// ═══════════════════════════════
+const DB = {
+  'INY-T2-20260415-00045': {
+    lote:'INY-T2-20260415-00045', op:'OP-2024-000156', proceso:'Inyectado',
+    producto:'CARCASA-PRO-7X', qty:200, cajas:2, turno:'T2', fecha:'15/04/2026 14:35',
+    operario:'Juan Flores', maquina:'INY-03', cc:'Aprobado', estado:'En Inventario',
+    niveles:4,
+    tree: {
+      id:'PT-1000', label:'PT-1000', sub:'Producto Terminado', tipo:'PT', qty:200,
+      children:[{
+        id:'ENS-T2-00010', label:'ENS-T2-20260415-00010', sub:'Ensamble Final', tipo:'ENS', qty:200,
+        children:[
+          { id:'INY-T2-00045', label:'INY-T2-20260415-00045', sub:'Inyectado', tipo:'INY', qty:200, highlighted:true, children:[] },
+          { id:'PIN-T2-00012', label:'PIN-T2-20260415-00012', sub:'Pintura', tipo:'PIN', qty:200, children:[] },
+          { id:'MET-T2-00008', label:'MET-T2-20260415-00008', sub:'Metalizado', tipo:'MET', qty:200, children:[] },
+          { id:'SER-T2-00012', label:'SER-T2-20260415-00012', sub:'Serigrafiado', tipo:'SER', qty:200, children:[] },
+        ]
+      }]
+    },
+    timeline:[
+      { hora:'14:35', evento:'Recojo registrado', desc:'Inyectado · 200 und · INY-03', icon:'capture', cc:'—' },
+      { hora:'14:36', evento:'Pre-registro CC creado', desc:'TKT-0392 · Pendiente inspección', icon:'cc', cc:'Pendiente' },
+      { hora:'14:55', evento:'CC aprobado', desc:'Inspector: Ana Quispe · 200/200 aprobadas', icon:'ok', cc:'Aprobado' },
+      { hora:'15:02', evento:'Inventario confirmado', desc:'ERP Softgap · PRE-28842 confirmado', icon:'inv', cc:'—' },
+      { hora:'15:15', evento:'Ingresó a Ensamble', desc:'Escaneado en ENS-02 · Luis Torres', icon:'next', cc:'—' },
+      { hora:'15:48', evento:'PT generado', desc:'PT-1000 · 200 und · Lote cerrado', icon:'pt', cc:'—' },
+    ]
+  },
+  'OP-2024-000156': {
+    lote:'OP-2024-000156', op:'OP-2024-000156', proceso:'Múltiples procesos',
+    producto:'CARCASA-PRO-7X', qty:1200, cajas:10, turno:'T2', fecha:'15/04/2026',
+    operario:'Varios', maquina:'Múltiples', cc:'Aprobado', estado:'En Inventario',
+    niveles:4,
+    tree: {
+      id:'PT-1000', label:'PT-1000', sub:'Producto Terminado', tipo:'PT', qty:1200,
+      children:[{
+        id:'ENS-T2-00010', label:'ENS-T2-20260415-00010', sub:'Ensamble Final', tipo:'ENS', qty:1200,
+        children:[
+          { id:'INY-T2-00045', label:'INY-T2-20260415-00045', sub:'Inyectado', tipo:'INY', qty:1200, children:[] },
+          { id:'MET-T2-00046', label:'MET-T2-20260415-00046', sub:'Metalizado', tipo:'MET', qty:1200, children:[] },
+          { id:'SER-T2-00047', label:'SER-T2-20260415-00047', sub:'Serigrafiado', tipo:'SER', qty:1200, children:[] },
+        ]
+      }]
+    },
+    timeline:[
+      { hora:'06:00', evento:'Turno T1 inicia','desc':'Inyectado CI1 y CI2 · INY-01, INY-02', icon:'capture', cc:'—' },
+      { hora:'10:30', evento:'Metalizado iniciado', desc:'CI2 → MET-02 · Carlos Vega', icon:'next', cc:'—' },
+      { hora:'12:15', evento:'Serigrafiado completado', desc:'CI1 → SER-01 · Ana Quispe', icon:'ok', cc:'Aprobado' },
+      { hora:'14:00', evento:'Turno T2 inicia', desc:'Ensamble en ENS-02', icon:'capture', cc:'—' },
+      { hora:'15:48', evento:'PT generado', desc:'1200 und · 10 cajas · PT-1000', icon:'pt', cc:'—' },
+    ]
+  }
+};
+
+const RESULTADOS_DEMO = [
+  { lote:'INY-T2-20260415-00045', op:'OP-2024-000156', proceso:'Inyectado',          producto:'CARCASA-PRO-7X', qty:200,  cajas:2, fecha:'15/04/2026', turno:'T2', cc:'aprobado', estado:'En Inventario', niveles:4 },
+  { lote:'INY-T2-20260415-00044', op:'OP-2024-000155', proceso:'Inyectado',          producto:'MARCO-3B',       qty:350,  cajas:3, fecha:'15/04/2026', turno:'T1', cc:'aprobado', estado:'En Inventario', niveles:4 },
+  { lote:'INY-T2-20260415-00043', op:'OP-2024-000154', proceso:'Inyectado',          producto:'TAPA-5A',        qty:420,  cajas:4, fecha:'15/04/2026', turno:'T1', cc:'aprobado', estado:'En Inventario', niveles:3 },
+  { lote:'MET-T2-20260415-00046', op:'OP-2024-000156', proceso:'Metalizado',         producto:'CARCASA-PRO-7X', qty:960,  cajas:8, fecha:'15/04/2026', turno:'T2', cc:'aprobado', estado:'En Ensamble',   niveles:3 },
+  { lote:'SER-T2-20260415-00047', op:'OP-2024-000156', proceso:'Serigrafiado',       producto:'CARCASA-PRO-7X', qty:420,  cajas:4, fecha:'15/04/2026', turno:'T2', cc:'aprobado_parcial', estado:'Parcial', niveles:3 },
+  { lote:'ENS-T2-20260415-00048', op:'OP-2024-000159', proceso:'Ensamble',           producto:'PT-2000',        qty:240,  cajas:2, fecha:'15/04/2026', turno:'T2', cc:'pendiente', estado:'En Proceso',  niveles:2 },
+  { lote:'PT-T2-20260415-00049',  op:'OP-2024-000160', proceso:'Producto Terminado', producto:'PT-3000',        qty:480,  cajas:4, fecha:'15/04/2026', turno:'T2', cc:'aprobado', estado:'En Almacén',   niveles:4 },
+];
+
+const CC_CFG = {
+  aprobado:       {label:'Aprobado',    cls:'bg-green-100 text-green-700'},
+  aprobado_parcial:{label:'Apro. Parc.',cls:'bg-cyan-100 text-cyan-700'},
+  pendiente:      {label:'Pendiente',   cls:'bg-amber-100 text-amber-700'},
+  rechazado:      {label:'Rechazado',   cls:'bg-red-100 text-red-700'},
+};
+
+// ═══════════════════════════════
+// BÚSQUEDA
+// ═══════════════════════════════
+function setDir(d) {
+  dirActiva = d;
+  document.getElementById('dir-regresiva').classList.toggle('active', d==='regresiva');
+  document.getElementById('dir-progresiva').classList.toggle('active', d==='progresiva');
+  const badge = document.getElementById('dir-badge');
+  badge.textContent = d==='regresiva' ? '← Regresiva' : 'Progresiva →';
+  badge.className = `text-[10px] font-bold px-2 py-0.5 rounded-full ${d==='regresiva'?'bg-blue-100 text-blue-700':'bg-violet-100 text-violet-700'}`;
+}
+
+function simBusqueda() {
+  document.getElementById('search-input').value = 'INY-T2-20260415';
+  document.getElementById('search-type').value = 'lote';
+  buscar();
+}
+
+function buscar() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) { showToast('error', 'Ingrese un criterio de búsqueda'); return; }
+
+  document.getElementById('search-status').classList.remove('hidden');
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('results-section').classList.add('hidden');
+  document.getElementById('detail-section').classList.add('hidden');
+
+  setTimeout(() => {
+    document.getElementById('search-status').classList.add('hidden');
+    renderResultados();
+  }, 800);
+}
+
+function renderResultados() {
+  const tbody = document.getElementById('results-tbody');
+  document.getElementById('res-count').textContent = `${RESULTADOS_DEMO.length} resultados`;
+
+  const PROC_CLS_T = {
+    Inyectado:'bg-violet-100 text-violet-700', Metalizado:'bg-sky-100 text-sky-700',
+    Serigrafiado:'bg-amber-100 text-amber-700', Pintado:'bg-orange-100 text-orange-700',
+    Ensamble:'bg-teal-100 text-teal-700', 'Producto Terminado':'bg-green-100 text-green-700',
+  };
+
+  tbody.innerHTML = RESULTADOS_DEMO.map((r, i) => {
+    const ccCfg = CC_CFG[r.cc] || CC_CFG.pendiente;
+    const procCls = PROC_CLS_T[r.proceso] || 'bg-slate-100 text-slate-600';
+    const nivelDots = Array.from({length:r.niveles}, (_,j) =>
+      `<div class="w-2 h-2 rounded-full ${j<r.niveles?'bg-blue-400':'bg-slate-200'}"></div>`
+    ).join('');
+
+    return `
+    <tr class="result-row" onclick="seleccionarResultado('${r.lote}', ${i})">
+      <td class="px-4 py-3">
+        <div class="font-mono font-bold text-slate-800 text-[11px]">${r.lote}</div>
+        <div class="text-[10px] text-slate-400 mt-0.5">${r.producto}</div>
+      </td>
+      <td class="px-3 py-3 font-mono text-[11px] text-slate-600">${r.op}</td>
+      <td class="px-3 py-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${procCls}">${r.proceso}</span></td>
+      <td class="px-3 py-3 text-[11px] font-medium text-slate-700">${r.producto}</td>
+      <td class="px-3 py-3 text-center font-bold text-slate-700">${r.qty.toLocaleString()}</td>
+      <td class="px-3 py-3 text-center text-slate-600">${r.cajas}</td>
+      <td class="px-3 py-3 text-center">
+        <div class="font-mono text-[10px] text-slate-600">${r.fecha}</div>
+        <div class="text-[9px] text-slate-400">${r.turno}</div>
+      </td>
+      <td class="px-3 py-3 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ccCfg.cls}">${ccCfg.label}</span></td>
+      <td class="px-3 py-3 text-center text-[10px] font-bold text-slate-600">${r.estado}</td>
+      <td class="px-3 py-3">
+        <div class="flex items-center gap-1 justify-center">${nivelDots}</div>
+        <div class="text-[9px] text-slate-400 text-center mt-0.5">${r.niveles} niveles</div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('results-section').classList.remove('hidden');
+}
+
+// ═══════════════════════════════
+// SELECCIONAR RESULTADO
+// ═══════════════════════════════
+function seleccionarResultado(lote, rowIdx) {
+  document.querySelectorAll('.result-row').forEach((r, i) => r.classList.toggle('active', i === rowIdx));
+
+  const data = DB[lote] || DB['INY-T2-20260415-00045'];
+  renderDetalle(data);
+}
+
+function renderDetalle(data) {
+  document.getElementById('detail-section').classList.remove('hidden');
+  document.getElementById('tree-lote-title').textContent = data.lote;
+
+  // Info
+  const campos = [
+    {label:'Lote',        val:`<span class="font-mono text-green-700 font-bold text-[10px]">${data.lote}</span>`},
+    {label:'OP',          val: data.op},
+    {label:'Proceso',     val:`<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${PROC_CLS[data.proceso]||'bg-slate-100 text-slate-600'}">${data.proceso}</span>`},
+    {label:'Producto',    val: data.producto},
+    {label:'Cantidad',    val:`<span class="font-bold">${data.qty} und</span>`},
+    {label:'Fecha',       val: data.fecha},
+    {label:'Turno',       val: data.turno},
+    {label:'Operario',    val: data.operario},
+    {label:'Máquina',     val: data.maquina},
+    {label:'CC',          val:`<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${CC_CFG[data.cc.toLowerCase()]?.cls||'bg-slate-100 text-slate-600'}">${data.cc}</span>`},
+    {label:'Estado',      val:`<span class="font-bold text-blue-700">${data.estado}</span>`},
+  ];
+  document.getElementById('det-info').innerHTML = campos.map(c => `
+    <div class="flex justify-between py-1.5 border-b border-slate-50 last:border-0">
+      <span class="text-[10px] text-slate-400">${c.label}</span>
+      <span class="text-[10px] text-slate-700">${c.val}</span>
+    </div>`).join('');
+
+  // Dirección info
+  const dirEl = document.getElementById('det-dir-info');
+  if (dirActiva === 'regresiva') {
+    dirEl.className = 'rounded-xl p-3 text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700';
+    dirEl.innerHTML = '← <strong>Regresiva:</strong> Muestra todos los componentes y procesos que originaron este lote, hasta la materia prima.';
+  } else {
+    dirEl.className = 'rounded-xl p-3 text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700';
+    dirEl.innerHTML = '→ <strong>Progresiva:</strong> Muestra todos los productos terminados que contienen este lote como componente.';
+  }
+
+  // Timeline
+  renderTimeline(data.timeline);
+
+  // Árbol
+  renderTree(data.tree, data.lote);
+
+  setTimeout(() => {
+    document.getElementById('detail-section').scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 150);
+}
+
+// ═══════════════════════════════
+// TIMELINE
+// ═══════════════════════════════
+function renderTimeline(events) {
+  const TL_ICONS = {
+    capture: { bg:'#dbeafe', color:'#2563eb', svg:'<path d="M3 9V6a2 2 0 0 1 2-2h2M15 4h2a2 2 0 0 1 2 2v3M3 15v3a2 2 0 0 1 2 2h2M15 20h2a2 2 0 0 1 2-2v-3"/>' },
+    cc:      { bg:'#f3e8ff', color:'#9333ea', svg:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' },
+    ok:      { bg:'#dcfce7', color:'#16a34a', svg:'<polyline points="20 6 9 17 4 12"/>' },
+    inv:     { bg:'#e0f2fe', color:'#0369a1', svg:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>' },
+    next:    { bg:'#fef3c7', color:'#d97706', svg:'<polyline points="9 18 15 12 9 6"/>' },
+    pt:      { bg:'#dcfce7', color:'#15803d', svg:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>' },
+  };
+
+  document.getElementById('timeline').innerHTML = `
+    <div class="tl-line"></div>
+    ${events.map((e, i) => {
+      const ic = TL_ICONS[e.icon] || TL_ICONS.capture;
+      return `
+      <div class="relative pl-6 pb-4 ${i === events.length-1 ? '' : ''}">
+        <div class="tl-dot" style="top:2px; background:${ic.bg}; border-color:${ic.color}">
+          <svg style="width:10px;height:10px;margin:1px auto;display:block;color:${ic.color}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">${ic.svg}</svg>
+        </div>
+        <div class="mb-0.5 text-[10px] font-bold text-slate-700">${e.evento}</div>
+        <div class="text-[10px] text-slate-400">${e.desc}</div>
+        <div class="text-[9px] font-mono text-slate-300 mt-0.5">${e.hora}</div>
+      </div>`;
+    }).join('')}`;
+}
+
+// ═══════════════════════════════
+// ÁRBOL SVG
+// ═══════════════════════════════
+const NODE_W = 160, NODE_H = 58, GAP_Y = 90, GAP_X = 24;
+let treeData = null;
+
+function layoutTree(node, depth=0, offset=0) {
+  node.depth = depth;
+  if (!node.children || !node.children.length) {
+    node.width = NODE_W;
+    node.x = offset;
+    return offset + NODE_W + GAP_X;
+  }
+  let childX = offset;
+  for (const child of node.children) {
+    childX = layoutTree(child, depth+1, childX);
+  }
+  const firstChild = node.children[0];
+  const lastChild  = node.children[node.children.length-1];
+  node.x = (firstChild.x + lastChild.x + NODE_W) / 2 - NODE_W / 2;
+  node.width = NODE_W;
+  return childX;
+}
+
+function getAllNodes(node, arr=[]) {
+  arr.push(node);
+  if (node.children) node.children.forEach(c => getAllNodes(c, arr));
+  return arr;
+}
+
+function getEdges(node, edges=[]) {
+  if (node.children) {
+    node.children.forEach(child => {
+      edges.push({
+        x1: node.x + NODE_W/2, y1: node.depth * GAP_Y + NODE_H,
+        x2: child.x + NODE_W/2, y2: child.depth * GAP_Y
+      });
+      getEdges(child, edges);
+    });
+  }
+  return edges;
+}
+
+const TIPO_COLOR = {
+  PT:  {fill:'#dcfce7', stroke:'#22c55e', text:'#15803d'},
+  ENS: {fill:'#e0f2fe', stroke:'#0ea5e9', text:'#0369a1'},
+  INY: {fill:'#ede9fe', stroke:'#8b5cf6', text:'#6d28d9'},
+  MET: {fill:'#e0f2fe', stroke:'#0ea5e9', text:'#0369a1'},
+  SER: {fill:'#fef3c7', stroke:'#f59e0b', text:'#92400e'},
+  PIN: {fill:'#ffedd5', stroke:'#f97316', text:'#c2410c'},
+};
+
+function renderTree(root, loteHighlight) {
+  treeData = JSON.parse(JSON.stringify(root));
+  const totalWidth = layoutTree(treeData);
+  const nodes      = getAllNodes(treeData);
+  const edges      = getEdges(treeData);
+  const maxDepth   = Math.max(...nodes.map(n => n.depth));
+
+  const svgW = Math.max(totalWidth + GAP_X, 800);
+  const svgH = (maxDepth + 1) * GAP_Y + NODE_H + 40;
+
+  const svg = document.getElementById('tree-svg');
+  svg.setAttribute('width', svgW);
+  svg.setAttribute('height', svgH);
+  svg.style.transform = `scale(${zoomLevel})`;
+  svg.style.transformOrigin = '0 0';
+
+  let html = `<g transform="translate(20, 20)">`;
+
+  // Edges
+  edges.forEach(e => {
+    const mx = (e.x1 + e.x2) / 2;
+    const my = (e.y1 + e.y2) / 2;
+    html += `<path d="M${e.x1},${e.y1} C${e.x1},${e.y1+30} ${e.x2},${e.y2-30} ${e.x2},${e.y2}"
+      fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="none"/>`;
+    // Arrow tip
+    html += `<polygon points="${e.x2},${e.y2} ${e.x2-5},${e.y2-8} ${e.x2+5},${e.y2-8}" fill="#94a3b8"/>`;
+  });
+
+  // Nodes
+  nodes.forEach(node => {
+    const x = node.x, y = node.depth * GAP_Y;
+    const c = TIPO_COLOR[node.tipo] || TIPO_COLOR.INY;
+    const isHL = node.highlighted;
+    const fill   = isHL ? c.fill : c.fill;
+    const stroke = isHL ? c.stroke : c.stroke;
+    const sw     = isHL ? 2.5 : 1.5;
+
+    // Box
+    html += `<g class="tree-node-box ${isHL ? 'selected' : ''}" onclick="selectNode('${node.id}')" data-id="${node.id}"
+      data-lote="${node.label}" data-sub="${node.sub}" data-qty="${node.qty||'—'}">`;
+
+    // Shadow rect
+    html += `<rect x="${x+2}" y="${y+2}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="rgba(0,0,0,.06)"/>`;
+    // Main rect
+    html += `<rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+
+    // Highlighted pulse ring
+    if (isHL) {
+      html += `<rect x="${x-3}" y="${y-3}" width="${NODE_W+6}" height="${NODE_H+6}" rx="13" fill="none" stroke="${stroke}" stroke-width="1.5" opacity="0.4"/>`;
+    }
+
+    // Badge tipo
+    const badgeX = x + NODE_W - 36, badgeY = y + 5;
+    html += `<rect x="${badgeX}" y="${badgeY}" width="30" height="14" rx="7" fill="${stroke}" opacity="0.2"/>`;
+    html += `<text x="${badgeX+15}" y="${badgeY+9}" text-anchor="middle" fill="${c.text}" font-family="JetBrains Mono" font-size="8" font-weight="700">${node.tipo}</text>`;
+
+    // Label
+    const shortLabel = node.label.length > 18 ? node.label.slice(0,15)+'…' : node.label;
+    html += `<text x="${x+10}" y="${y+20}" fill="${c.text}" font-family="JetBrains Mono" font-size="9" font-weight="700">${shortLabel}</text>`;
+    html += `<text x="${x+10}" y="${y+34}" fill="#64748b" font-family="Plus Jakarta Sans" font-size="9">${node.sub}</text>`;
+
+    // Cantidad
+    if (node.qty) {
+      html += `<text x="${x+10}" y="${y+48}" fill="#94a3b8" font-family="JetBrains Mono" font-size="8">${node.qty} und</text>`;
+    }
+
+    html += `</g>`;
+  });
+
+  html += `</g>`;
+  svg.innerHTML = html;
+
+  // Tooltips
+  svg.querySelectorAll('.tree-node-box').forEach(el => {
+    el.addEventListener('mouseenter', (e) => {
+      const tt = document.getElementById('node-tooltip');
+      tt.classList.remove('hidden');
+      tt.style.opacity = '1';
+      const rect = svg.getBoundingClientRect();
+      const container = document.getElementById('tree-container');
+      tt.innerHTML = `
+        <div style="color:#94a3b8;font-size:9px;margin-bottom:4px;letter-spacing:1px">${el.dataset.sub?.toUpperCase()}</div>
+        <div style="color:#f1f5f9;font-weight:700;margin-bottom:6px">${el.dataset.lote}</div>
+        <div style="color:#64748b;font-size:10px">Cantidad: <span style="color:#e2e8f0">${el.dataset.qty} und</span></div>
+        <div style="color:#475569;font-size:9px;margin-top:6px">Clic para ver detalle</div>`;
+      const mX = e.clientX - rect.left + container.scrollLeft + 10;
+      const mY = e.clientY - rect.top  + container.scrollTop  + 10;
+      tt.style.left = mX + 'px';
+      tt.style.top  = mY + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      const tt = document.getElementById('node-tooltip');
+      tt.style.opacity = '0';
+      setTimeout(() => tt.classList.add('hidden'), 150);
+    });
+  });
+}
+
+function selectNode(id) {
+  nodeSelected = id;
+  showToast('info', `Nodo: ${id}`);
+  // Highlight
+  document.querySelectorAll('.tree-node-box rect:nth-child(2)').forEach(r => r.style.strokeWidth = '1.5');
+}
+
+// ═══════════════════════════════
+// ZOOM
+// ═══════════════════════════════
+function zoom(delta) {
+  zoomLevel = Math.min(2, Math.max(0.4, zoomLevel + delta));
+  document.getElementById('zoom-label').textContent = Math.round(zoomLevel*100) + '%';
+  const svg = document.getElementById('tree-svg');
+  svg.style.transform = `scale(${zoomLevel})`;
+  svg.style.transformOrigin = '0 0';
+}
+
+// ═══════════════════════════════
+// CERRAR DETALLE
+// ═══════════════════════════════
+function cerrarDetalle() {
+  document.getElementById('detail-section').classList.add('hidden');
+  document.querySelectorAll('.result-row').forEach(r => r.classList.remove('active'));
+}
+
+// ═══════════════════════════════
+// EXPORTAR
+// ═══════════════════════════════
+function exportar(tipo) {
+  showToast('success', tipo === 'pdf'
+    ? '⬇ Generando reporte PDF de trazabilidad...'
+    : '⬇ Generando archivo Excel con historial completo...');
+}
+
+// ═══════════════════════════════
+// TOAST
+// ═══════════════════════════════
+let toastT;
+function showToast(type, msg) {
+  clearTimeout(toastT);
+  const icons = {
+    success:`<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:  `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    info:   `<svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>`,
+  };
+  document.getElementById('toast-icon').innerHTML = icons[type] || icons.info;
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast').classList.remove('hidden');
+  toastT = setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3500);
+}
+</script>
+</body>
+</html>

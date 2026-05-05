@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrazeQ — Impresión de Etiquetas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            sidebar: '#0c1220',
+            'sidebar-hover': '#162032',
+            'sidebar-active': '#1d4ed8',
+            brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af' },
+            success: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d' },
+            warn: { 50: '#fffbeb', 100: '#fef3c7', 500: '#f59e0b', 600: '#d97706' },
+            danger: { 50: '#fff1f2', 100: '#ffe4e6', 500: '#ef4444', 600: '#dc2626' },
+          },
+          animation: {
+            'fade-in': 'fadeIn .25s ease',
+            'slide-up': 'slideUp .3s ease',
+            'pulse-soft': 'pulseSoft 2s infinite',
+          },
+          keyframes: {
+            fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+            slideUp: { from: { opacity: 0, transform: 'translateY(12px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+            pulseSoft: { '0%,100%': { opacity: 1 }, '50%': { opacity: .5 } },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 99px;
+    }
+
+    .etiqueta-paper {
+      background: #fff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* vista modal */
+    .modal-overlay {
+      backdrop-filter: blur(4px);
+    }
+
+    /* checkbox custom */
+    input[type=checkbox] {
+      accent-color: #2563eb;
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    select,
+    input {
+      outline: none;
+    }
+
+    select:focus,
+    input:focus {
+      ring: none;
+    }
+
+    .nav-link {
+      transition: background .15s, color .15s;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 flex min-h-screen">
+
+  <!-- ═══════════════════════════════════════════════════════ SIDEBAR -->
+  <aside class="w-56 bg-sidebar flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+    <!-- Logo -->
+    <div class="px-4 py-5 border-b border-white/5">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <path d="M14 17h7M17 14v7" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-white font-bold text-sm leading-none">TrazeQ</div>
+          <div class="text-slate-500 text-[10px] mt-0.5">Trazabilidad v2.4</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+
+    <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+
+      <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2">Principal</div>
+
+      <a href="dashboard_produccion.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>Dashboard
+      </a>
+
+      <a class="nav-link flex items-center gap-2.5 px-3 py-2 rounded-lg bg-sidebar-active text-white text-xs font-600 cursor-pointer"
+        onclick="setNav(this)">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>Gestion de Etiquetas
+        <span class="ml-auto bg-white/20 text-white text-[9px] font-700 px-1.5 py-0.5 rounded-full">3</span>
+      </a>
+
+      <a href="reimpresion_etiquetas.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+          <line x1="7" y1="7" x2="7.01" y2="7" />
+        </svg>Re-Impresion de Etiquetas
+      </a>
+
+      <a href="captura_produccion.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>Producción
+      </a>
+
+      <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2 mt-3">Control</div>
+      <a href="control_calidad.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="20 6 9 17 4 12" />
+        </svg>Calidad
+      </a>
+      <a href="partes_trabajo.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" />
+        </svg>Partes de Trabajo
+      </a>
+
+      <a href="seguimiento_inventario.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>Inventario
+      </a>
+
+      <a href="trazabilidad.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>Trazabilidad
+      </a>
+
+
+      <a
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>Reportes
+      </a>
+      <a
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+        </svg>Configuración
+      </a>
+
+    </nav>
+
+    <!-- User -->
+    <div class="px-3 py-3 border-t border-white/5">
+      <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+        <div
+          class="w-7 h-7 bg-brand-600 rounded-full flex items-center justify-center text-white text-[11px] font-700 flex-shrink-0">
+          JF</div>
+        <div class="min-w-0">
+          <div class="text-slate-200 text-xs font-600 truncate">Juan Flores</div>
+          <div class="text-slate-500 text-[10px]">Turno 2 · Operario</div>
+        </div>
+        <div class="ml-auto w-2 h-2 rounded-full bg-success-500 flex-shrink-0 animate-pulse-soft"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════════ MAIN -->
+  <div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+    <!-- TOPBAR -->
+    <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+      <div class="flex items-center gap-3">
+        <div>
+          <h1 class="text-base font-extrabold text-slate-800">Impresión de Etiquetas</h1>
+          <p class="text-[11px] text-slate-400 font-400">Gestión de etiquetas por orden de producción</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Printer selector -->
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <svg class="w-4 h-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          <span class="text-xs text-slate-500 font-500">Impresora:</span>
+          <select id="printer-select"
+            class="bg-transparent text-xs font-600 text-slate-700 border-none cursor-pointer pr-4">
+            <option>Zebra ZT411 — Planta 1</option>
+            <option>Zebra ZD421 — Planta 2</option>
+            <option>TSC MB240T (Portátil)</option>
+            <option>Honeywell PC42</option>
+          </select>
+          <div class="w-2 h-2 rounded-full bg-success-500"></div>
+        </div>
+        <button onclick="imprimirTodas()"
+          class="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-600 px-4 py-2 rounded-xl transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Imprimir todas pendientes
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="flex-1 p-6">
+
+      <!-- KPI STRIP -->
+      <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="3" width="15" height="13" />
+              <path d="M16 8h4l3 3v5h-7V8z" />
+              <circle cx="5.5" cy="18.5" r="2.5" />
+              <circle cx="18.5" cy="18.5" r="2.5" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-2xl font-800 text-slate-800" id="kpi-total">12</div>
+            <div class="text-[11px] text-slate-400 font-500">Total órdenes hoy</div>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 bg-warn-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-warn-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-2xl font-800 text-warn-600" id="kpi-pend">3</div>
+            <div class="text-[11px] text-slate-400 font-500">Pendientes de imprimir</div>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 bg-success-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-success-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-2xl font-800 text-success-600" id="kpi-imp">9</div>
+            <div class="text-[11px] text-slate-400 font-500">Impresas correctamente</div>
+          </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+          <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="8" rx="2" />
+              <rect x="2" y="14" width="20" height="8" rx="2" />
+              <line x1="6" y1="6" x2="6.01" y2="6" />
+              <line x1="6" y1="18" x2="6.01" y2="18" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-2xl font-800 text-slate-700" id="kpi-etiq">84</div>
+            <div class="text-[11px] text-slate-400 font-500">Etiquetas impresas total</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN GRID: tabla izquierda, detalle/preview derecha -->
+      <div class="flex gap-5 items-start">
+
+        <!-- ══ GRILLA DE ÓRDENES ══ -->
+        <div class="flex-1 min-w-0">
+          <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+
+            <!-- Header tabla -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 class="text-sm font-700 text-slate-800">Órdenes de Producción</h2>
+                <p class="text-[11px] text-slate-400 mt-0.5">Seleccione una orden para configurar e imprimir etiquetas
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- Filtro status -->
+                <select id="filter-status" onchange="filterTable()"
+                  class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-600 font-500 cursor-pointer">
+                  <option value="todos">Todos los estados</option>
+                  <option value="pendiente">Pendientes</option>
+                  <option value="impresa">Impresas</option>
+                  <option value="parcial">Parciales</option>
+                </select>
+                <!-- Filtro proceso -->
+                <select id="filter-proceso" onchange="filterTable()"
+                  class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 text-slate-600 font-500 cursor-pointer">
+                  <option value="todos">Todos los procesos</option>
+                  <option value="Inyectado">Inyectado</option>
+                  <option value="Metalizado">Metalizado</option>
+                  <option value="Serigrafiado">Serigrafiado</option>
+                  <option value="Ensamble">Ensamble</option>
+                  <option value="Producto Terminado">Prod. Terminado</option>
+                </select>
+                <!-- Select all -->
+                <button onclick="seleccionarPendientes()"
+                  class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-500 transition-colors">
+                  Sel. pendientes
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabla -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-100">
+                    <th class="px-4 py-3 text-left">
+                      <input type="checkbox" id="chk-all" onchange="toggleAll(this)">
+                    </th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">Orden /
+                      Lote</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">Proceso
+                    </th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">Turno
+                    </th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">Cajas
+                    </th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">
+                      Cantidad</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">
+                      Progreso</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">Estado
+                    </th>
+                    <th class="px-3 py-3 text-left text-[10px] font-700 text-slate-500 uppercase tracking-wider">
+                      Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-body" class="divide-y divide-slate-50">
+                  <!-- Generado por JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer tabla -->
+            <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span class="text-[11px] text-slate-400" id="tabla-footer">12 órdenes · 3 pendientes seleccionadas</span>
+              <div class="flex items-center gap-2">
+                <button onclick="imprimirSeleccionadas()" id="btn-impr-sel"
+                  class="flex items-center gap-1.5 bg-success-600 hover:bg-success-700 disabled:opacity-40 text-white text-xs font-600 px-3 py-1.5 rounded-lg transition-colors"
+                  disabled>
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="6 9 6 2 18 2 18 9" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect x="6" y="14" width="12" height="8" />
+                  </svg>
+                  Imprimir seleccionadas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ PANEL DETALLE + PREVIEW ══ -->
+        <div class="w-80 flex-shrink-0 space-y-4" id="detail-panel">
+
+          <!-- Placeholder si nada seleccionado -->
+          <div id="detail-placeholder" class="bg-white border border-slate-200 rounded-2xl p-8 text-center">
+            <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <svg class="w-7 h-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="1.5">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                <line x1="7" y1="7" x2="7.01" y2="7" />
+              </svg>
+            </div>
+            <p class="text-sm font-600 text-slate-600 mb-1">Sin selección</p>
+            <p class="text-xs text-slate-400">Haga clic en una orden para ver el detalle y configurar la impresión</p>
+          </div>
+
+          <!-- Detalle (oculto inicialmente) -->
+          <div id="detail-content" class="hidden space-y-4 animate-slide-up">
+
+            <!-- Info orden -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-700 text-slate-800">Detalle de la orden</h3>
+                <span id="det-status-badge" class="text-[10px] font-700 px-2.5 py-1 rounded-full"></span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between"><span class="text-[11px] text-slate-400">Lote</span><span
+                    class="text-[11px] font-700 text-slate-700 font-mono" id="det-lote">—</span></div>
+                <div class="flex justify-between"><span class="text-[11px] text-slate-400">OP</span><span
+                    class="text-[11px] font-600 text-slate-700" id="det-op">—</span></div>
+                <div class="flex justify-between"><span class="text-[11px] text-slate-400">Proceso</span><span
+                    class="text-[11px] font-600 text-slate-700" id="det-proceso">—</span></div>
+                <div class="flex justify-between"><span class="text-[11px] text-slate-400">Turno / Fecha</span><span
+                    class="text-[11px] font-600 text-slate-700" id="det-turno">—</span></div>
+                <div class="flex justify-between"><span class="text-[11px] text-slate-400">Cantidad</span><span
+                    class="text-[11px] font-600 text-slate-700" id="det-qty">—</span></div>
+                <div class="flex justify-between"><span class="text-[11px] text-slate-400">Máquina</span><span
+                    class="text-[11px] font-600 text-slate-700" id="det-maq">—</span></div>
+              </div>
+              <!-- Cajas progress -->
+              <div class="mt-3 pt-3 border-t border-slate-100">
+                <div class="flex justify-between mb-1.5">
+                  <span class="text-[10px] text-slate-400 font-500">Etiquetas impresas</span>
+                  <span class="text-[10px] font-700 text-slate-700" id="det-cajas-prog">0 / 0</span>
+                </div>
+                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-brand-500 rounded-full transition-all duration-500" id="det-progress-bar"
+                    style="width:0%"></div>
+                </div>
+                <!-- Cajas grid -->
+                <div class="mt-3 grid grid-cols-5 gap-1.5" id="cajas-grid"></div>
+              </div>
+            </div>
+
+            <!-- Config impresión -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <h3 class="text-sm font-700 text-slate-800 mb-3">Configuración</h3>
+              <div class="space-y-2.5">
+                <div>
+                  <label class="text-[10px] font-600 text-slate-500 uppercase tracking-wide">Caja a imprimir</label>
+                  <div class="flex gap-2 mt-1">
+                    <select id="cfg-caja"
+                      class="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-600 text-slate-700 cursor-pointer">
+                      <!-- opciones generadas por JS -->
+                    </select>
+                    <button onclick="imprimirTodasCajas()"
+                      class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-600 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+                      Todas
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label class="text-[10px] font-600 text-slate-500 uppercase tracking-wide">Copias</label>
+                  <input type="number" id="cfg-copias" value="1" min="1" max="5"
+                    class="mt-1 w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-600 text-slate-700">
+                </div>
+              </div>
+              <!-- Botones acción -->
+              <div class="flex gap-2 mt-4">
+                <button onclick="verPreview()"
+                  class="flex-1 flex items-center justify-center gap-1.5 border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-600 py-2 rounded-xl transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+                  </svg>
+                  Preview
+                </button>
+                <button onclick="imprimirOrden()"
+                  class="flex-1 flex items-center justify-center gap-1.5 bg-success-600 hover:bg-success-700 text-white text-xs font-600 py-2 rounded-xl transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect x="6" y="14" width="12" height="8" />
+                  </svg>
+                  Imprimir
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview etiqueta -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-success-500"></div>
+                <h3 class="text-sm font-700 text-slate-800">Vista previa</h3>
+              </div>
+              <div class="etiqueta-paper border-2 border-slate-200 rounded-xl p-3.5 shadow-sm" id="label-preview-small">
+                <!-- generado por JS -->
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ MODAL PREVIEW -->
+  <div id="modal-overlay" class="fixed inset-0 bg-black/50 modal-overlay z-50 hidden items-center justify-center">
+    <div class="bg-white rounded-3xl p-6 w-[420px] max-h-[90vh] overflow-y-auto shadow-2xl animate-slide-up">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-800 text-slate-800">Vista previa de etiqueta</h2>
+        <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-700 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="etiqueta-paper border-2 border-slate-300 rounded-2xl p-5 shadow-inner" id="label-preview-modal"></div>
+      <div class="mt-4 text-center text-[10px] text-slate-400 font-mono" id="modal-lote-text"></div>
+      <div class="flex gap-3 mt-4">
+        <button onclick="cerrarModal()"
+          class="flex-1 border border-slate-200 text-slate-600 text-sm font-600 py-2.5 rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+        <button onclick="imprimirDesdeModal()"
+          class="flex-1 bg-success-600 hover:bg-success-700 text-white text-sm font-600 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Confirmar e imprimir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+    <div
+      class="bg-slate-900 text-white text-xs font-600 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in min-w-[260px]">
+      <div id="toast-icon" class="flex-shrink-0"></div>
+      <span id="toast-msg"></span>
+    </div>
+  </div>
+
+  <script>
+    // ════════════════════════════════════════════════════════════
+    // DATOS
+    // ════════════════════════════════════════════════════════════
+    const PROCESOS = {
+      'Inyectado': 'INY', 'Metalizado': 'MET', 'Serigrafiado': 'SER',
+      'Pintado': 'PIN', 'Ensamble': 'ENS', 'Producto Terminado': 'PT'
+    };
+    const COLOR_PROCESO = {
+      'Inyectado': 'bg-violet-100 text-violet-700',
+      'Metalizado': 'bg-sky-100 text-sky-700',
+      'Serigrafiado': 'bg-amber-100 text-amber-700',
+      'Pintado': 'bg-orange-100 text-orange-700',
+      'Ensamble': 'bg-teal-100 text-teal-700',
+      'Producto Terminado': 'bg-green-100 text-green-700'
+    };
+
+    const ordenes = [
+      { id: 1, op: 'OP-2024-000156', lote: 'INY-T2-20260415-00045', proceso: 'Inyectado', turno: 'T2', fecha: '15/04/2026', maq: 'INY-03', qty: '1,200', totalCajas: 10, cajasImp: 10, estado: 'impresa' },
+      { id: 2, op: 'OP-2024-000157', lote: 'MET-T2-20260415-00046', proceso: 'Metalizado', turno: 'T2', fecha: '15/04/2026', maq: 'MET-02', qty: '960', totalCajas: 8, cajasImp: 8, estado: 'impresa' },
+      { id: 3, op: 'OP-2024-000158', lote: 'SER-T2-20260415-00047', proceso: 'Serigrafiado', turno: 'T2', fecha: '15/04/2026', maq: 'SER-01', qty: '840', totalCajas: 7, cajasImp: 3, estado: 'parcial' },
+      { id: 4, op: 'OP-2024-000159', lote: 'ENS-T2-20260415-00048', proceso: 'Ensamble', turno: 'T2', fecha: '15/04/2026', maq: 'ENS-02', qty: '480', totalCajas: 4, cajasImp: 0, estado: 'pendiente' },
+      { id: 5, op: 'OP-2024-000160', lote: 'INY-T1-20260415-00044', proceso: 'Inyectado', turno: 'T1', fecha: '15/04/2026', maq: 'INY-04', qty: '1,440', totalCajas: 12, cajasImp: 12, estado: 'impresa' },
+      { id: 6, op: 'OP-2024-000161', lote: 'PT-T2-20260415-00049', proceso: 'Producto Terminado', turno: 'T2', fecha: '15/04/2026', maq: 'ENS-01', qty: '480', totalCajas: 4, cajasImp: 0, estado: 'pendiente' },
+      { id: 7, op: 'OP-2024-000162', lote: 'MET-T1-20260415-00043', proceso: 'Metalizado', turno: 'T1', fecha: '15/04/2026', maq: 'MET-03', qty: '720', totalCajas: 6, cajasImp: 6, estado: 'impresa' },
+      { id: 8, op: 'OP-2024-000163', lote: 'SER-T1-20260415-00042', proceso: 'Serigrafiado', turno: 'T1', fecha: '15/04/2026', maq: 'SER-02', qty: '600', totalCajas: 5, cajasImp: 5, estado: 'impresa' },
+      { id: 9, op: 'OP-2024-000164', lote: 'ENS-T1-20260415-00041', proceso: 'Ensamble', turno: 'T1', fecha: '15/04/2026', maq: 'ENS-01', qty: '360', totalCajas: 3, cajasImp: 3, estado: 'impresa' },
+      { id: 10, op: 'OP-2024-000165', lote: 'INY-T2-20260415-00050', proceso: 'Inyectado', turno: 'T2', fecha: '15/04/2026', maq: 'INY-01', qty: '1,200', totalCajas: 10, cajasImp: 0, estado: 'pendiente' },
+      { id: 11, op: 'OP-2024-000166', lote: 'PIN-T2-20260415-00051', proceso: 'Pintado', turno: 'T2', fecha: '15/04/2026', maq: 'PIN-01', qty: '720', totalCajas: 6, cajasImp: 6, estado: 'impresa' },
+      { id: 12, op: 'OP-2024-000167', lote: 'PT-T1-20260415-00040', proceso: 'Producto Terminado', turno: 'T1', fecha: '15/04/2026', maq: 'ENS-02', qty: '480', totalCajas: 4, cajasImp: 4, estado: 'impresa' },
+    ];
+
+    let selectedOrden = null;
+    let qrSmall = null;
+
+    // ════════════════════════════════════════════════════════════
+    // NAV
+    // ════════════════════════════════════════════════════════════
+    function setNav(el) {
+      document.querySelectorAll('.nav-link').forEach(n => {
+        n.classList.remove('bg-sidebar-active', 'text-white', 'font-600');
+        n.classList.add('text-slate-400', 'font-500');
+      });
+      el.classList.add('bg-sidebar-active', 'text-white', 'font-600');
+      el.classList.remove('text-slate-400', 'font-500');
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // RENDER TABLA
+    // ════════════════════════════════════════════════════════════
+    function badgeEstado(est) {
+      const m = {
+        impresa: 'bg-success-100 text-success-700',
+        pendiente: 'bg-warn-100 text-warn-700',
+        parcial: 'bg-blue-100 text-blue-700',
+      };
+      const l = { impresa: 'Impresa', pendiente: 'Pendiente', parcial: 'Parcial' };
+      return `<span class="text-[10px] font-700 px-2 py-0.5 rounded-full ${m[est]}">${l[est]}</span>`;
+    }
+
+    function barProgress(imp, total) {
+      const pct = total > 0 ? Math.round((imp / total) * 100) : 0;
+      const color = pct === 100 ? 'bg-success-500' : pct > 0 ? 'bg-brand-500' : 'bg-slate-200';
+      return `
+    <div class="flex items-center gap-2">
+      <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div class="h-full ${color} rounded-full" style="width:${pct}%"></div>
+      </div>
+      <span class="text-[10px] font-600 text-slate-500 w-10 text-right">${imp}/${total}</span>
+    </div>`;
+    }
+
+    function renderTabla(data) {
+      const tbody = document.getElementById('tabla-body');
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-slate-400 text-xs">No hay órdenes para mostrar</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map(o => `
+    <tr class="hover:bg-slate-50 transition-colors cursor-pointer ${selectedOrden?.id === o.id ? 'bg-brand-50' : ''}" onclick="seleccionarOrden(${o.id})">
+      <td class="px-4 py-3">
+        <input type="checkbox" class="row-check" data-id="${o.id}" onchange="onCheckChange(event)" onclick="event.stopPropagation()">
+      </td>
+      <td class="px-3 py-3">
+        <div class="font-700 text-slate-800 text-xs">${o.op}</div>
+        <div class="font-mono text-[10px] text-slate-400 mt-0.5">${o.lote}</div>
+      </td>
+      <td class="px-3 py-3">
+        <span class="text-[10px] font-600 px-2 py-0.5 rounded-full ${COLOR_PROCESO[o.proceso] || 'bg-slate-100 text-slate-600'}">${o.proceso}</span>
+      </td>
+      <td class="px-3 py-3 text-xs text-slate-600 font-500">${o.turno} · ${o.fecha}</td>
+      <td class="px-3 py-3 text-xs text-slate-700 font-600 text-center">${o.totalCajas}</td>
+      <td class="px-3 py-3 text-xs text-slate-700 font-600">${o.qty} und</td>
+      <td class="px-3 py-3 w-32">${barProgress(o.cajasImp, o.totalCajas)}</td>
+      <td class="px-3 py-3">${badgeEstado(o.estado)}</td>
+      <td class="px-3 py-3">
+        <div class="flex items-center gap-1.5">
+          <button onclick="event.stopPropagation();seleccionarOrden(${o.id});verPreview()"
+            title="Vista previa"
+            class="w-7 h-7 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-600 flex items-center justify-center transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/></svg>
+          </button>
+          <button onclick="event.stopPropagation();imprimirRapido(${o.id})"
+            title="Imprimir"
+            class="w-7 h-7 rounded-lg ${o.estado === 'impresa' ? 'bg-slate-100 text-slate-400' : 'bg-success-50 hover:bg-success-100 text-success-600'} flex items-center justify-center transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+      updateFooter();
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // FILTRO
+    // ════════════════════════════════════════════════════════════
+    function filterTable() {
+      const st = document.getElementById('filter-status').value;
+      const pr = document.getElementById('filter-proceso').value;
+      let data = ordenes;
+      if (st !== 'todos') data = data.filter(o => o.estado === st);
+      if (pr !== 'todos') data = data.filter(o => o.proceso === pr);
+      renderTabla(data);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // SELECCIÓN
+    // ════════════════════════════════════════════════════════════
+    function seleccionarOrden(id) {
+      selectedOrden = ordenes.find(o => o.id === id);
+      renderDetalle();
+      renderTabla(getFilteredData());
+    }
+
+    function getFilteredData() {
+      const st = document.getElementById('filter-status').value;
+      const pr = document.getElementById('filter-proceso').value;
+      let data = ordenes;
+      if (st !== 'todos') data = data.filter(o => o.estado === st);
+      if (pr !== 'todos') data = data.filter(o => o.proceso === pr);
+      return data;
+    }
+
+    function renderDetalle() {
+      const o = selectedOrden;
+      if (!o) return;
+
+      document.getElementById('detail-placeholder').classList.add('hidden');
+      document.getElementById('detail-content').classList.remove('hidden');
+
+      // Info
+      document.getElementById('det-lote').textContent = o.lote;
+      document.getElementById('det-op').textContent = o.op;
+      document.getElementById('det-proceso').textContent = o.proceso;
+      document.getElementById('det-turno').textContent = `${o.turno} · ${o.fecha}`;
+      document.getElementById('det-qty').textContent = `${o.qty} und`;
+      document.getElementById('det-maq').textContent = o.maq;
+
+      // Status badge
+      const sb = document.getElementById('det-status-badge');
+      const m = { impresa: 'bg-success-100 text-success-700', pendiente: 'bg-warn-100 text-warn-700', parcial: 'bg-blue-100 text-blue-700' };
+      const l = { impresa: 'Impresa', pendiente: 'Pendiente', parcial: 'Parcial' };
+      sb.className = `text-[10px] font-700 px-2.5 py-1 rounded-full ${m[o.estado]}`;
+      sb.textContent = l[o.estado];
+
+      // Progress
+      const pct = o.totalCajas > 0 ? Math.round((o.cajasImp / o.totalCajas) * 100) : 0;
+      document.getElementById('det-cajas-prog').textContent = `${o.cajasImp} / ${o.totalCajas}`;
+      document.getElementById('det-progress-bar').style.width = pct + '%';
+
+      // Cajas grid
+      const grid = document.getElementById('cajas-grid');
+      grid.innerHTML = Array.from({ length: o.totalCajas }, (_, i) => {
+        const impresa = i < o.cajasImp;
+        return `<div class="h-7 rounded-lg text-[10px] font-700 flex items-center justify-center cursor-pointer transition-all
+      ${impresa ? 'bg-success-100 text-success-700 border border-success-200' : 'bg-slate-100 text-slate-400 border border-slate-200 hover:bg-brand-100 hover:text-brand-700 hover:border-brand-300'}"
+      title="Caja ${i + 1}">${i + 1}</div>`;
+      }).join('');
+
+      // Select cajas
+      const sel = document.getElementById('cfg-caja');
+      sel.innerHTML = '';
+      for (let i = o.cajasImp + 1; i <= o.totalCajas; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `Caja ${i} de ${o.totalCajas}`;
+        sel.appendChild(opt);
+      }
+      if (!sel.options.length) {
+        sel.innerHTML = '<option>Todas impresas</option>';
+      }
+
+      // Preview pequeño
+      renderLabelSmall(o, o.cajasImp + 1 <= o.totalCajas ? o.cajasImp + 1 : o.totalCajas);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // BARCODE SVG
+    // ════════════════════════════════════════════════════════════
+    function makeBars(text) {
+      let bars = []; let x = 3;
+      bars.push({ x, w: 2 }); x += 3; bars.push({ x, w: 1 }); x += 2;
+      for (let i = 0; i < text.length; i++) {
+        const c = text.charCodeAt(i) % 10;
+        const pats = [[2, 1, 1, 2], [1, 2, 1, 2], [1, 1, 2, 2], [2, 2, 1, 1], [1, 2, 2, 1], [2, 1, 2, 1], [1, 1, 1, 3], [3, 1, 1, 1], [1, 3, 1, 1], [2, 1, 3, 1]];
+        let d = true;
+        for (const w of pats[c]) { if (d) bars.push({ x, w }); x += w + 1; d = !d; } x += 1;
+      }
+      bars.push({ x, w: 2 }); x += 3; bars.push({ x, w: 1 }); x += 2; bars.push({ x, w: 2 }); x += 6;
+      const rects = bars.map(b => `<rect x="${b.x}" y="0" width="${b.w}" height="44" fill="#111827"/>`).join('');
+      return `<svg viewBox="0 0 ${x} 44" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:44px;display:block"><rect width="${x}" height="44" fill="white"/>${rects}</svg>`;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // RENDER LABEL
+    // ════════════════════════════════════════════════════════════
+    function labelHTML(o, caja, size = 'small') {
+      const fs = size === 'small' ? { title: '10px', lote: '13px', field: '9px', caja: '10px' } : { title: '11px', lote: '16px', field: '10px', caja: '12px' };
+      return `
+    <div style="font-family:'JetBrains Mono',monospace;background:#fff;padding:${size === 'small' ? '10px' : '16px'}">
+      <div style="text-align:center;font-size:${fs.title};font-weight:700;color:#475569;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">${o.proceso.toUpperCase()}</div>
+      <div style="text-align:center;font-size:${fs.lote};font-weight:800;color:#0f172a;margin-bottom:10px;line-height:1.2">${o.lote}</div>
+      <div style="display:flex;gap:${size === 'small' ? '8px' : '12px'};align-items:flex-end">
+        <div style="flex:1">
+          <div style="font-size:${fs.field};color:#64748b;line-height:1.8">
+            <div><b>OP:</b> ${o.op}</div>
+            <div><b>Turno:</b> ${o.turno} · ${o.fecha}</div>
+            <div><b>Máquina:</b> ${o.maq}</div>
+            <div><b>Cant.:</b> ${o.qty} und</div>
+            <div style="font-weight:800;color:#0f172a"><b>Caja:</b> ${caja} de ${o.totalCajas}</div>
+          </div>
+        </div>
+        <div id="qr-${size}" style="flex-shrink:0"></div>
+      </div>
+      <div style="margin-top:10px">${makeBars(o.lote)}</div>
+      <div style="font-size:7px;color:#94a3b8;text-align:center;margin-top:2px;letter-spacing:.5px">${o.lote}-C${String(caja).padStart(2, '0')}</div>
+      <div style="background:#0f172a;color:#fff;font-size:${fs.caja};font-weight:800;text-align:center;padding:4px 8px;border-radius:5px;margin-top:8px;letter-spacing:1px">CAJA ${caja} DE ${o.totalCajas}</div>
+    </div>`;
+    }
+
+    function renderLabelSmall(o, caja) {
+      const el = document.getElementById('label-preview-small');
+      el.innerHTML = labelHTML(o, caja, 'small');
+      setTimeout(() => {
+        const qrEl = document.getElementById('qr-small');
+        if (qrEl) {
+          qrEl.innerHTML = '';
+          try { new QRCode(qrEl, { text: `https://trazeq.app/l/${o.lote}`, width: 52, height: 52, colorDark: "#0f172a" }); }
+          catch (e) { }
+        }
+      }, 50);
+    }
+
+    function renderLabelModal(o, caja) {
+      const el = document.getElementById('label-preview-modal');
+      el.innerHTML = labelHTML(o, caja, 'large');
+      document.getElementById('modal-lote-text').textContent = `${o.lote} · Caja ${caja} de ${o.totalCajas}`;
+      setTimeout(() => {
+        const qrEl = document.getElementById('qr-large');
+        if (qrEl) {
+          qrEl.innerHTML = '';
+          try { new QRCode(qrEl, { text: `https://trazeq.app/l/${o.lote}/c/${caja}`, width: 72, height: 72, colorDark: "#0f172a" }); }
+          catch (e) { }
+        }
+      }, 50);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // PREVIEW MODAL
+    // ════════════════════════════════════════════════════════════
+    function verPreview() {
+      if (!selectedOrden) return;
+      const caja = parseInt(document.getElementById('cfg-caja')?.value) || selectedOrden.cajasImp + 1 || 1;
+      renderLabelModal(selectedOrden, caja);
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      document.getElementById('modal-overlay').classList.add('flex');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      document.getElementById('modal-overlay').classList.remove('flex');
+    }
+
+    function imprimirDesdeModal() {
+      cerrarModal();
+      imprimirOrden();
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // IMPRIMIR
+    // ════════════════════════════════════════════════════════════
+    function marcarImpresa(id, cajas = null) {
+      const o = ordenes.find(x => x.id === id);
+      if (!o) return;
+      if (cajas !== null) {
+        o.cajasImp = Math.min(o.totalCajas, o.cajasImp + cajas);
+      } else {
+        o.cajasImp = o.totalCajas;
+      }
+      o.estado = o.cajasImp >= o.totalCajas ? 'impresa' : o.cajasImp > 0 ? 'parcial' : 'pendiente';
+      updateKPIs();
+    }
+
+    function imprimirOrden() {
+      if (!selectedOrden) return;
+      const printer = document.getElementById('printer-select').value;
+      const cajasSel = document.getElementById('cfg-caja')?.value === 'Todas impresas' ? 0 : 1;
+      showToast('loading', `Enviando a ${printer}...`);
+      setTimeout(() => {
+        marcarImpresa(selectedOrden.id, cajasSel);
+        renderTabla(getFilteredData());
+        if (selectedOrden) renderDetalle();
+        showToast('success', `✓ Etiqueta impresa en ${printer}`);
+      }, 1200);
+    }
+
+    function imprimirRapido(id) {
+      const o = ordenes.find(x => x.id === id);
+      if (!o) return;
+      const printer = document.getElementById('printer-select').value;
+      showToast('loading', `Imprimiendo ${o.lote}...`);
+      setTimeout(() => {
+        marcarImpresa(id);
+        renderTabla(getFilteredData());
+        if (selectedOrden?.id === id) renderDetalle();
+        showToast('success', `✓ ${o.totalCajas - o.cajasImp + o.cajasImp} etiquetas → ${printer}`);
+      }, 1000);
+    }
+
+    function imprimirTodasCajas() {
+      if (!selectedOrden) return;
+      const printer = document.getElementById('printer-select').value;
+      const pendientes = selectedOrden.totalCajas - selectedOrden.cajasImp;
+      if (pendientes === 0) { showToast('info', 'Todas las etiquetas ya están impresas'); return; }
+      showToast('loading', `Imprimiendo ${pendientes} etiquetas en ${printer}...`);
+      setTimeout(() => {
+        marcarImpresa(selectedOrden.id);
+        renderTabla(getFilteredData());
+        renderDetalle();
+        showToast('success', `✓ ${pendientes} etiquetas impresas en ${printer}`);
+      }, 1500);
+    }
+
+    function imprimirSeleccionadas() {
+      const checks = document.querySelectorAll('.row-check:checked');
+      const ids = [...checks].map(c => parseInt(c.dataset.id));
+      if (!ids.length) return;
+      const printer = document.getElementById('printer-select').value;
+      const total = ids.reduce((s, id) => {
+        const o = ordenes.find(x => x.id === id);
+        return s + (o ? o.totalCajas - o.cajasImp : 0);
+      }, 0);
+      showToast('loading', `Imprimiendo ${total} etiquetas de ${ids.length} órdenes...`);
+      setTimeout(() => {
+        ids.forEach(id => marcarImpresa(id));
+        renderTabla(getFilteredData());
+        if (selectedOrden) renderDetalle();
+        document.getElementById('chk-all').checked = false;
+        showToast('success', `✓ ${total} etiquetas impresas en ${printer}`);
+        document.getElementById('btn-impr-sel').disabled = true;
+      }, 2000);
+    }
+
+    function imprimirTodas() {
+      const pendientes = ordenes.filter(o => o.estado !== 'impresa');
+      if (!pendientes.length) { showToast('info', 'No hay órdenes pendientes'); return; }
+      const printer = document.getElementById('printer-select').value;
+      const total = pendientes.reduce((s, o) => s + (o.totalCajas - o.cajasImp), 0);
+      showToast('loading', `Imprimiendo ${total} etiquetas de ${pendientes.length} órdenes pendientes...`);
+      setTimeout(() => {
+        pendientes.forEach(o => marcarImpresa(o.id));
+        renderTabla(getFilteredData());
+        if (selectedOrden) renderDetalle();
+        showToast('success', `✓ ${total} etiquetas impresas en ${printer}`);
+      }, 2500);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // CHECKBOXES
+    // ════════════════════════════════════════════════════════════
+    function toggleAll(el) {
+      document.querySelectorAll('.row-check').forEach(c => c.checked = el.checked);
+      updateBtnSel();
+    }
+
+    function onCheckChange(e) {
+      e.stopPropagation();
+      const all = document.querySelectorAll('.row-check');
+      const checked = document.querySelectorAll('.row-check:checked');
+      document.getElementById('chk-all').checked = all.length === checked.length;
+      updateBtnSel();
+    }
+
+    function updateBtnSel() {
+      const checked = document.querySelectorAll('.row-check:checked');
+      const btn = document.getElementById('btn-impr-sel');
+      btn.disabled = checked.length === 0;
+      btn.textContent = checked.length > 0
+        ? `Imprimir ${checked.length} seleccionadas`
+        : 'Imprimir seleccionadas';
+    }
+
+    function seleccionarPendientes() {
+      document.querySelectorAll('.row-check').forEach(c => {
+        const id = parseInt(c.dataset.id);
+        const o = ordenes.find(x => x.id === id);
+        c.checked = o && o.estado !== 'impresa';
+      });
+      updateBtnSel();
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // KPIS
+    // ════════════════════════════════════════════════════════════
+    function updateKPIs() {
+      const total = ordenes.length;
+      const pend = ordenes.filter(o => o.estado === 'pendiente').length;
+      const parc = ordenes.filter(o => o.estado === 'parcial').length;
+      const imp = ordenes.filter(o => o.estado === 'impresa').length;
+      const etiq = ordenes.reduce((s, o) => s + o.cajasImp, 0);
+      document.getElementById('kpi-total').textContent = total;
+      document.getElementById('kpi-pend').textContent = pend + parc;
+      document.getElementById('kpi-imp').textContent = imp;
+      document.getElementById('kpi-etiq').textContent = etiq;
+    }
+
+    function updateFooter() {
+      const pend = ordenes.filter(o => o.estado !== 'impresa').length;
+      document.getElementById('tabla-footer').textContent = `${ordenes.length} órdenes · ${pend} pendientes`;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // TOAST
+    // ════════════════════════════════════════════════════════════
+    let toastTimer = null;
+    function showToast(type, msg) {
+      clearTimeout(toastTimer);
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      const msgEl = document.getElementById('toast-msg');
+
+      const icons = {
+        success: `<svg class="w-4 h-4 text-success-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+        loading: `<svg class="w-4 h-4 text-brand-400 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
+        info: `<svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+      };
+
+      icon.innerHTML = icons[type] || icons.info;
+      msgEl.textContent = msg;
+      toast.classList.remove('hidden');
+
+      if (type !== 'loading') {
+        toastTimer = setTimeout(() => toast.classList.add('hidden'), 3000);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // INIT
+    // ════════════════════════════════════════════════════════════
+    renderTabla(ordenes);
+    updateKPIs();
+
+    // Click fuera del modal
+    document.getElementById('modal-overlay').addEventListener('click', function (e) {
+      if (e.target === this) cerrarModal();
+    });
+  </script>
+</body>
+
+</html>
