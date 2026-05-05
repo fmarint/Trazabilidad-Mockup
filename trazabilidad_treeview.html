@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrazeQ — Trazabilidad de Lotes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Plus Jakarta Sans','sans-serif'],
+        mono: ['JetBrains Mono','monospace'],
+      },
+      animation: {
+        'fade-in':  'fadeIn .25s ease',
+        'slide-up': 'slideUp .3s ease',
+        'spin-slow':'spin 1s linear infinite',
+      },
+      keyframes: {
+        fadeIn:  {from:{opacity:0},to:{opacity:1}},
+        slideUp: {from:{opacity:0,transform:'translateY(10px)'},to:{opacity:1,transform:'translateY(0)'}},
+      }
+    }
+  }
+}
+</script>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:'Plus Jakarta Sans',sans-serif;}
+  .scrollbar-light::-webkit-scrollbar{width:5px;height:5px;}
+  .scrollbar-light::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px;}
+  .scrollbar-thin::-webkit-scrollbar{width:4px;}
+  .scrollbar-thin::-webkit-scrollbar-thumb{background:#334155;border-radius:99px;}
+
+  /* Scanner */
+  @keyframes scanLine{0%,100%{top:5px;opacity:.9}50%{top:38px;opacity:.3}}
+  .scan-beam{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#22c55e,transparent);animation:scanLine 1.5s ease-in-out infinite;}
+  .bracket{position:absolute;width:12px;height:12px;}
+  .bracket-tl{top:0;left:0;border-top:2px solid currentColor;border-left:2px solid currentColor;border-radius:2px 0 0 0;}
+  .bracket-tr{top:0;right:0;border-top:2px solid currentColor;border-right:2px solid currentColor;border-radius:0 2px 0 0;}
+  .bracket-bl{bottom:0;left:0;border-bottom:2px solid currentColor;border-left:2px solid currentColor;border-radius:0 0 0 2px;}
+  .bracket-br{bottom:0;right:0;border-bottom:2px solid currentColor;border-right:2px solid currentColor;border-radius:0 0 2px 0;}
+
+  /* TREEVIEW */
+  .tree-wrap{font-family:'Plus Jakarta Sans',sans-serif;user-select:none;}
+
+  /* Nodo */
+  .tree-node-row{display:flex;align-items:flex-start;position:relative;}
+  .tree-children{position:relative;margin-left:0;}
+
+  /* Líneas de conexión vertical */
+  .tree-vert-line{
+    position:absolute;
+    left:20px;
+    top:0;
+    bottom:0;
+    width:2px;
+    background:#e2e8f0;
+  }
+
+  /* Línea horizontal desde vertical al nodo */
+  .tree-horiz-connector{
+    display:flex;
+    align-items:center;
+    flex-shrink:0;
+    position:relative;
+  }
+
+  /* Card del nodo */
+  .node-card{
+    border:2px solid;
+    border-radius:12px;
+    padding:10px 14px;
+    cursor:pointer;
+    transition:all .15s;
+    position:relative;
+    min-width:220px;
+    max-width:280px;
+  }
+  .node-card:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.1);}
+  .node-card.expanded{box-shadow:0 0 0 3px rgba(37,99,235,.2);}
+  .node-card.highlighted{box-shadow:0 0 0 4px rgba(251,191,36,.5);}
+
+  /* Colores por proceso */
+  .nc-PT   {background:#f0fdf4;border-color:#86efac;color:#15803d;}
+  .nc-ENS  {background:#f0fdfa;border-color:#5eead4;color:#0f766e;}
+  .nc-INY  {background:#f5f3ff;border-color:#c4b5fd;color:#6d28d9;}
+  .nc-MET  {background:#f0f9ff;border-color:#7dd3fc;color:#0369a1;}
+  .nc-SER  {background:#fffbeb;border-color:#fcd34d;color:#92400e;}
+  .nc-PIN  {background:#fff7ed;border-color:#fdba74;color:#c2410c;}
+  .nc-MAT  {background:#fafafa;border-color:#d4d4d4;color:#525252;}
+
+  /* Toggle expand */
+  .toggle-btn{
+    width:20px;height:20px;border-radius:50%;
+    border:2px solid #cbd5e1;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:all .15s;flex-shrink:0;
+    font-size:10px;font-weight:700;color:#64748b;
+  }
+  .toggle-btn:hover{border-color:#3b82f6;color:#3b82f6;}
+  .toggle-btn.open{background:#3b82f6;border-color:#3b82f6;color:#fff;}
+
+  /* Grid detail panel */
+  .detail-panel{transition:all .3s;}
+
+  /* Timeline evento */
+  .tl-item{position:relative;padding-left:28px;padding-bottom:12px;}
+  .tl-item:not(:last-child)::before{content:'';position:absolute;left:7px;top:16px;bottom:0;width:2px;background:#e2e8f0;}
+  .tl-dot{position:absolute;left:0;top:4px;width:14px;height:14px;border-radius:50%;border:2px solid white;}
+
+  /* Zoom controls */
+  .zoom-btn{width:28px;height:28px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#64748b;transition:all .15s;}
+  .zoom-btn:hover{border-color:#3b82f6;color:#3b82f6;}
+
+  input:focus,select:focus{outline:none;}
+</style>
+</head>
+<body class="bg-slate-100 flex min-h-screen">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+  <div class="px-4 py-5 border-b border-white/5">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/></svg>
+      </div>
+      <div><div class="text-white font-bold text-sm">TrazeQ</div><div class="text-slate-500 text-[10px]">v2.4</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] text-xs font-medium cursor-pointer transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Inicio</a>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] text-xs font-medium cursor-pointer transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Captura</a>
+    <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 my-2">Control</div>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] text-xs font-medium cursor-pointer transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>Calidad</a>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] text-xs font-medium cursor-pointer transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Inventario</a>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Trazabilidad
+    </a>
+    <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] text-xs font-medium cursor-pointer transition-colors"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Dashboard</a>
+  </nav>
+  <div class="px-3 py-3 border-t border-white/5">
+    <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+      <div class="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold">SC</div>
+      <div><div class="text-slate-200 text-xs font-semibold">Supervisor CC</div><div class="text-slate-500 text-[10px]">Turno 2</div></div>
+      <div class="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+  <!-- TOPBAR -->
+  <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+    <div>
+      <h1 class="text-base font-extrabold text-slate-800">Trazabilidad de Lotes</h1>
+      <p class="text-[11px] text-slate-400">Árbol genealógico · Rutas paralelas · Regresiva y progresiva</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col p-5 gap-4">
+
+    <!-- ══ BUSCADOR ══ -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+      <div class="flex gap-3 items-start">
+
+        <!-- Scanner icon -->
+        <div class="relative w-12 h-10 bg-slate-50 border-2 border-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div class="bracket bracket-tl text-blue-400"></div><div class="bracket bracket-tr text-blue-400"></div>
+          <div class="bracket bracket-bl text-blue-400"></div><div class="bracket bracket-br text-blue-400"></div>
+          <div class="scan-beam"></div>
+          <svg class="w-5 h-5 text-blue-300 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+
+        <!-- Inputs -->
+        <div class="flex-1 space-y-2">
+          <div class="flex gap-2">
+            <select id="search-type" class="border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-50 cursor-pointer flex-shrink-0">
+              <option value="lote">Por Lote</option>
+              <option value="op">Por OP</option>
+              <option value="caja">Por Código de Caja</option>
+              <option value="producto">Por Producto</option>
+              <option value="operario">Por Operario</option>
+            </select>
+            <input type="text" id="search-input" placeholder="Ingrese el código o escanee la etiqueta..."
+              class="flex-1 border-2 border-blue-300 focus:border-blue-500 bg-blue-50 rounded-xl px-4 py-2 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all"
+              onkeydown="if(event.key==='Enter') buscar()">
+            <!-- Dirección -->
+            <div class="flex border border-slate-200 rounded-xl overflow-hidden flex-shrink-0">
+              <button id="btn-reg" onclick="setDir('reg')" class="px-3 py-2 text-xs font-bold bg-blue-600 text-white transition-all">← Regresiva</button>
+              <button id="btn-prog" onclick="setDir('prog')" class="px-3 py-2 text-xs font-bold bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all">Progresiva →</button>
+            </div>
+            <button onclick="buscar()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Buscar
+            </button>
+          </div>
+          <!-- Demos rápidos -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Ejemplos:</span>
+            <button onclick="cargarDemo('complejo')" class="text-[10px] font-bold bg-green-50 border border-green-200 text-green-700 px-2.5 py-1 rounded-lg hover:bg-green-100 transition-colors">PT complejo (4 componentes)</button>
+            <button onclick="cargarDemo('simple')"   class="text-[10px] font-bold bg-violet-50 border border-violet-200 text-violet-700 px-2.5 py-1 rounded-lg hover:bg-violet-100 transition-colors">Solo inyectado (PT simple)</button>
+            <button onclick="cargarDemo('parcial')"  class="text-[10px] font-bold bg-sky-50 border border-sky-200 text-sky-700 px-2.5 py-1 rounded-lg hover:bg-sky-100 transition-colors">Ruta incompleta (en proceso)</button>
+            <button onclick="cargarDemo('prog')"     class="text-[10px] font-bold bg-amber-50 border border-amber-200 text-amber-700 px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">Progresiva (desde componente)</button>
+          </div>
+        </div>
+
+        <!-- Exportar -->
+        <div class="flex flex-col gap-1.5 flex-shrink-0">
+          <button onclick="showToast('success','Generando PDF...')" class="flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>PDF
+          </button>
+          <button onclick="showToast('success','Generando Excel...')" class="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Excel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LAYOUT RESULTADO ══ -->
+    <div id="result-area" class="hidden flex gap-4 flex-1 min-h-0 animate-slide-up">
+
+      <!-- TREEVIEW (izquierda principal) -->
+      <div class="flex-1 min-w-0 flex flex-col bg-white border border-slate-200 rounded-2xl overflow-hidden">
+
+        <!-- Header treeview -->
+        <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <h3 class="text-sm font-bold text-slate-800">Árbol de Trazabilidad</h3>
+            <span class="text-[11px] text-slate-400" id="tree-subtitle">—</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" id="dir-badge">—</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Leyenda -->
+            <div class="flex items-center gap-3 text-[9px] text-slate-500 border-r border-slate-200 pr-3 mr-1">
+              <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-green-100 border border-green-400 inline-block"></span>PT</span>
+              <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-teal-50 border border-teal-300 inline-block"></span>Ensamble</span>
+              <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-violet-100 border border-violet-400 inline-block"></span>Inyectado</span>
+              <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-sky-100 border border-sky-400 inline-block"></span>Metalizado</span>
+              <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-50 border border-amber-300 inline-block"></span>Serigrafiado</span>
+              <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-50 border border-orange-300 inline-block"></span>Pintado</span>
+            </div>
+            <!-- Zoom / Expand all -->
+            <button onclick="expandAll()" class="text-[10px] font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 hover:bg-blue-50 px-2.5 py-1 rounded-lg transition-all">Expandir todo</button>
+            <button onclick="collapseAll()" class="text-[10px] font-semibold text-slate-500 hover:text-slate-700 border border-slate-200 hover:bg-slate-50 px-2.5 py-1 rounded-lg transition-all">Colapsar</button>
+            <div class="flex gap-1">
+              <button class="zoom-btn" onclick="changeZoom(-10)">−</button>
+              <span class="zoom-btn text-[10px] font-mono cursor-default" id="zoom-lbl" style="width:42px">100%</span>
+              <button class="zoom-btn" onclick="changeZoom(10)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Treeview container -->
+        <div class="overflow-auto scrollbar-light flex-1 p-5" id="tree-container">
+          <div id="tree-root" style="transform-origin:top left;transition:transform .2s;" class="tree-wrap inline-block min-w-full"></div>
+        </div>
+      </div>
+
+      <!-- PANEL DETALLE (derecha) -->
+      <div class="w-72 flex-shrink-0 flex flex-col gap-4">
+
+        <!-- Placeholder -->
+        <div id="det-placeholder" class="bg-white border border-slate-200 rounded-2xl p-6 text-center">
+          <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <svg class="w-6 h-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <p class="text-xs font-bold text-slate-500 mb-1">Seleccione un nodo</p>
+          <p class="text-[11px] text-slate-400">Haga clic en cualquier bloque del árbol para ver el detalle completo</p>
+        </div>
+
+        <!-- Detalle nodo -->
+        <div id="det-panel" class="hidden space-y-3 animate-fade-in">
+
+          <!-- Info nodo -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" id="det-icon-bg">
+                <svg class="w-4 h-4" id="det-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg>
+              </div>
+              <div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" id="det-proc-badge">—</span>
+                <div class="font-mono font-bold text-slate-800 text-xs mt-0.5" id="det-lote">—</div>
+              </div>
+            </div>
+            <div class="space-y-1.5" id="det-fields"></div>
+          </div>
+
+          <!-- Estado CC + Inventario -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4">
+            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2.5">Estado</h4>
+            <div class="grid grid-cols-2 gap-2" id="det-estados"></div>
+          </div>
+
+          <!-- Cajas -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4" id="det-cajas-block">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Cajas del lote</h4>
+              <span class="text-[10px] text-slate-400" id="det-cajas-count">—</span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5" id="det-cajas-grid"></div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-4">
+            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-3">Historial de eventos</h4>
+            <div id="det-timeline"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty-state" class="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+      <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
+        <svg class="w-10 h-10 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <h2 class="text-base font-bold text-slate-500 mb-2">Consulta de trazabilidad</h2>
+      <p class="text-sm text-slate-400 max-w-lg mx-auto mb-6">Use el buscador o haga clic en uno de los ejemplos para ver el árbol genealógico con rutas de producción paralelas y secuenciales.</p>
+      <div class="grid grid-cols-3 gap-3 max-w-2xl mx-auto text-xs text-left">
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <div class="font-bold text-slate-700 mb-1">← Regresiva</div>
+          <div class="text-slate-400 text-[11px]">Dado un PT, muestra todos los componentes hasta la materia prima inyectada</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <div class="font-bold text-slate-700 mb-1">→ Progresiva</div>
+          <div class="text-slate-400 text-[11px]">Dado un componente, muestra todos los PTs en los que fue utilizado</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <div class="font-bold text-slate-700 mb-1">🌿 Rutas paralelas</div>
+          <div class="text-slate-400 text-[11px]">Soporta múltiples componentes que convergen en ensamble o PT</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
+  <div class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[240px]">
+    <span id="toast-icon"></span><span id="toast-msg"></span>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════
+// CLOCK
+// ══════════════════════════
+function tick(){document.getElementById('clock').textContent=new Date().toTimeString().split(' ')[0];}
+setInterval(tick,1000);tick();
+
+// ══════════════════════════
+// DATOS DE EJEMPLO
+// ══════════════════════════
+const DEMOS = {
+  // PT complejo: 4 componentes con rutas paralelas
+  complejo: {
+    dir:'reg',
+    root: {
+      id:'PT-001', tipo:'PT', lote:'PT-T2-20260415-001', op:'B-008-001',
+      producto:'CARCASA-PREMIUM-7X', qty:200, cajas:4, turno:'T2', fecha:'15/04/2026 16:30',
+      op_code:'B-008-00800000001', maquina:'ENS-02', operario:'Luis Torres',
+      cc:'Aprobado', inv:'Confirmado',
+      cajas_det:[
+        {n:1,qty:50,uid:'PT-001-C1',estado:'En almacén'},
+        {n:2,qty:50,uid:'PT-001-C2',estado:'En almacén'},
+        {n:3,qty:50,uid:'PT-001-C3',estado:'En almacén'},
+        {n:4,qty:50,uid:'PT-001-C4',estado:'En almacén'},
+      ],
+      timeline:[
+        {hora:'16:20',ev:'Ensamble iniciado',desc:'4 componentes escaneados · ENS-02',tipo:'proc'},
+        {hora:'16:28',ev:'Recojo registrado',desc:'200 und · 4 cajas',tipo:'ok'},
+        {hora:'16:30',ev:'CC aprobado',desc:'Inspector: Ana Quispe · 200/200',tipo:'cc'},
+        {hora:'16:35',ev:'Inventario confirmado',desc:'ALM-PT-01 · PRE-28901',tipo:'inv'},
+      ],
+      children:[
+        {
+          id:'INY-001', tipo:'INY', lote:'INY-T1-20260415-00044', op:'B-001-00100001230',
+          producto:'COMP-CI1 Carcasa base', qty:210, cajas:2, turno:'T1', fecha:'15/04/2026 08:30',
+          op_code:'B-001-00100001230', maquina:'INY-03', operario:'Juan Flores',
+          cc:'Aprobado', inv:'Confirmado',
+          cajas_det:[{n:1,qty:105,uid:'INY-001-C1',estado:'Consumida'},{n:2,qty:105,uid:'INY-001-C2',estado:'Consumida'}],
+          timeline:[
+            {hora:'08:10',ev:'Inyección iniciada',desc:'Molde M-CI1-03 · Ciclo 45s',tipo:'proc'},
+            {hora:'08:30',ev:'Recojo 210 und',desc:'2 cajas · INY-03',tipo:'ok'},
+            {hora:'09:00',ev:'CC aprobado',desc:'200 und aprobadas · 10 merma',tipo:'cc'},
+            {hora:'14:00',ev:'Ingresó a Ensamble',desc:'Escaneado en ENS-02',tipo:'next'},
+          ],
+          children:[]
+        },
+        {
+          id:'MET-001', tipo:'MET', lote:'MET-T2-20260415-00046', op:'B-004-00400000456',
+          producto:'COMP-CI2 Tapa metalizada', qty:205, cajas:2, turno:'T2', fecha:'15/04/2026 11:45',
+          op_code:'B-004-00400000456', maquina:'MET-02', operario:'Carlos Vega',
+          cc:'Aprobado', inv:'Confirmado',
+          cajas_det:[{n:1,qty:103,uid:'MET-001-C1',estado:'Consumida'},{n:2,qty:102,uid:'MET-001-C2',estado:'Consumida'}],
+          timeline:[
+            {hora:'10:30',ev:'Metalizado iniciado',desc:'Baño cromo-mate · MET-02',tipo:'proc'},
+            {hora:'11:45',ev:'Recojo 205 und',desc:'2 cajas · MET-02',tipo:'ok'},
+            {hora:'12:10',ev:'CC aprobado',desc:'200 und · 5 merma',tipo:'cc'},
+            {hora:'15:00',ev:'Ingresó a Ensamble',tipo:'next'},
+          ],
+          children:[
+            {
+              id:'INY-002', tipo:'INY', lote:'INY-T1-20260415-00043', op:'B-001-00100001229',
+              producto:'COMP-CI2 Base metalizable', qty:210, cajas:2, turno:'T1', fecha:'15/04/2026 07:15',
+              op_code:'B-001-00100001229', maquina:'INY-04', operario:'Rosa Mamani',
+              cc:'Aprobado', inv:'Confirmado',
+              cajas_det:[{n:1,qty:105,uid:'INY-002-C1',estado:'Consumida'},{n:2,qty:105,uid:'INY-002-C2',estado:'Consumida'}],
+              timeline:[
+                {hora:'07:00',ev:'Inyección iniciada',desc:'Molde M-CI2-01',tipo:'proc'},
+                {hora:'07:15',ev:'Recojo 210 und',tipo:'ok'},
+                {hora:'07:45',ev:'CC aprobado',desc:'205 und aprobadas',tipo:'cc'},
+                {hora:'10:00',ev:'Ingresó a Metalizado',tipo:'next'},
+              ],
+              children:[]
+            }
+          ]
+        },
+        {
+          id:'SER-001', tipo:'SER', lote:'SER-T2-20260415-00047', op:'B-003-00300000123',
+          producto:'COMP-CI3 Marco serigrafiado', qty:202, cajas:2, turno:'T2', fecha:'15/04/2026 13:20',
+          op_code:'B-003-00300000123', maquina:'SER-01', operario:'Ana Quispe',
+          cc:'Aprobado', inv:'Confirmado',
+          cajas_det:[{n:1,qty:101,uid:'SER-001-C1',estado:'Consumida'},{n:2,qty:101,uid:'SER-001-C2',estado:'Consumida'}],
+          timeline:[
+            {hora:'12:30',ev:'Serigrafiado iniciado',desc:'Tinta TINTA-BK-7 · SER-01',tipo:'proc'},
+            {hora:'13:20',ev:'Recojo 202 und',tipo:'ok'},
+            {hora:'13:45',ev:'CC aprobado',tipo:'cc'},
+            {hora:'15:30',ev:'Ingresó a Ensamble',tipo:'next'},
+          ],
+          children:[
+            {
+              id:'INY-003', tipo:'INY', lote:'INY-T1-20260415-00042', op:'B-001-00100001228',
+              producto:'COMP-CI3 Marco base', qty:210, cajas:2, turno:'T1', fecha:'15/04/2026 06:00',
+              op_code:'B-001-00100001228', maquina:'INY-01', operario:'Pedro López',
+              cc:'Aprobado', inv:'Confirmado',
+              cajas_det:[{n:1,qty:105,uid:'INY-003-C1',estado:'Consumida'},{n:2,qty:105,uid:'INY-003-C2',estado:'Consumida'}],
+              timeline:[
+                {hora:'06:00',ev:'Inyección',desc:'Molde M-CI3-02',tipo:'proc'},
+                {hora:'06:30',ev:'Recojo 210 und',tipo:'ok'},
+                {hora:'07:00',ev:'CC aprobado',tipo:'cc'},
+                {hora:'12:00',ev:'Ingresó a Serigrafiado',tipo:'next'},
+              ],
+              children:[]
+            }
+          ]
+        },
+        {
+          id:'PIN-001', tipo:'PIN', lote:'PIN-T2-20260415-00012', op:'B-005-00500000789',
+          producto:'COMP-CI4 Panel pintado', qty:203, cajas:2, turno:'T2', fecha:'15/04/2026 14:10',
+          op_code:'B-005-00500000789', maquina:'PIN-01', operario:'María Díaz',
+          cc:'Aprobado parcial', inv:'Confirmado',
+          cajas_det:[{n:1,qty:102,uid:'PIN-001-C1',estado:'Consumida'},{n:2,qty:101,uid:'PIN-001-C2',estado:'Consumida'}],
+          timeline:[
+            {hora:'13:00',ev:'Pintado iniciado',desc:'Color RAL-9016 · PIN-01',tipo:'proc'},
+            {hora:'14:10',ev:'Recojo 203 und',tipo:'ok'},
+            {hora:'14:30',ev:'CC aprobado parcial',desc:'200/203 aprobadas',tipo:'warn'},
+            {hora:'15:45',ev:'Ingresó a Ensamble',tipo:'next'},
+          ],
+          children:[
+            {
+              id:'INY-004', tipo:'INY', lote:'INY-T2-20260415-00041', op:'B-001-00100001227',
+              producto:'COMP-CI4 Panel base', qty:210, cajas:2, turno:'T2', fecha:'15/04/2026 09:00',
+              op_code:'B-001-00100001227', maquina:'INY-02', operario:'Carlos Vega',
+              cc:'Aprobado', inv:'Confirmado',
+              cajas_det:[{n:1,qty:105,uid:'INY-004-C1',estado:'Consumida'},{n:2,qty:105,uid:'INY-004-C2',estado:'Consumida'}],
+              timeline:[
+                {hora:'09:00',ev:'Inyección',desc:'Molde M-CI4-01',tipo:'proc'},
+                {hora:'09:45',ev:'Recojo 210 und',tipo:'ok'},
+                {hora:'10:15',ev:'CC aprobado',tipo:'cc'},
+                {hora:'12:30',ev:'Ingresó a Pintado',tipo:'next'},
+              ],
+              children:[]
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  // Solo inyectado = PT
+  simple: {
+    dir:'reg',
+    root: {
+      id:'PT-002', tipo:'PT', lote:'INY-T2-20260415-00050', op:'B-001-00100009001',
+      producto:'TAPÓN-SIMPLE-3A', qty:500, cajas:5, turno:'T2', fecha:'15/04/2026 15:00',
+      op_code:'B-001-00100009001', maquina:'INY-05', operario:'Rosa Mamani',
+      cc:'Aprobado', inv:'Confirmado',
+      cajas_det:[
+        {n:1,qty:100,uid:'INY-050-C1',estado:'En almacén'},
+        {n:2,qty:100,uid:'INY-050-C2',estado:'En almacén'},
+        {n:3,qty:100,uid:'INY-050-C3',estado:'En almacén'},
+        {n:4,qty:100,uid:'INY-050-C4',estado:'En almacén'},
+        {n:5,qty:100,uid:'INY-050-C5',estado:'En almacén'},
+      ],
+      timeline:[
+        {hora:'14:30',ev:'Inyección directa PT',desc:'Molde M-PT-3A · INY-05 · Este producto no requiere procesos adicionales',tipo:'proc'},
+        {hora:'15:00',ev:'Recojo 500 und',desc:'5 cajas · Este lote es el PT directamente',tipo:'ok'},
+        {hora:'15:20',ev:'CC aprobado',desc:'500/500 sin observaciones',tipo:'cc'},
+        {hora:'15:30',ev:'En almacén PT',desc:'ALM-PT-02 · Directo de inyección',tipo:'inv'},
+      ],
+      children:[],
+      nota:'Este producto tiene hoja de ruta simplificada: Inyectado → PT directo, sin procesos intermedios.'
+    }
+  },
+
+  // En proceso (ruta incompleta)
+  parcial: {
+    dir:'reg',
+    root: {
+      id:'ENS-002', tipo:'ENS', lote:'ENS-T2-20260415-00048', op:'B-008-00800000002',
+      producto:'MARCO-3B (en ensamble)', qty:0, cajas:0, turno:'T2', fecha:'15/04/2026 · En proceso',
+      op_code:'B-008-00800000002', maquina:'ENS-01', operario:'En proceso',
+      cc:'Pendiente', inv:'Pendiente',
+      cajas_det:[],
+      timeline:[
+        {hora:'16:00',ev:'Ensamble iniciado',desc:'Esperando componentes',tipo:'proc'},
+        {hora:'16:10',ev:'CI1 recibido',desc:'INY-T2-00051 · 200 und',tipo:'ok'},
+        {hora:'16:12',ev:'CI2 recibido',desc:'MET-T2-00047 · 200 und',tipo:'ok'},
+        {hora:'—',ev:'Esperando CI3 y CI4',desc:'SER y PIN aún no llegan',tipo:'warn'},
+      ],
+      children:[
+        {
+          id:'INY-005', tipo:'INY', lote:'INY-T2-20260415-00051', op:'B-001-00100001235',
+          producto:'CI1 para Marco-3B', qty:200, cajas:2, turno:'T2', fecha:'15/04/2026 15:00',
+          op_code:'B-001-00100001235', maquina:'INY-03', operario:'Juan Flores',
+          cc:'Aprobado', inv:'Confirmado',
+          cajas_det:[{n:1,qty:100,uid:'INY-051-C1',estado:'En Ensamble'},{n:2,qty:100,uid:'INY-051-C2',estado:'En Ensamble'}],
+          timeline:[{hora:'15:00',ev:'Inyección completa',tipo:'ok'},{hora:'15:30',ev:'CC aprobado',tipo:'cc'},{hora:'16:10',ev:'Entregado a Ensamble',tipo:'next'}],
+          children:[]
+        },
+        {
+          id:'MET-002', tipo:'MET', lote:'MET-T2-20260415-00047', op:'B-004-00400000457',
+          producto:'CI2 para Marco-3B', qty:200, cajas:2, turno:'T2', fecha:'15/04/2026 15:30',
+          op_code:'B-004-00400000457', maquina:'MET-03', operario:'Carlos Vega',
+          cc:'Aprobado', inv:'Confirmado',
+          cajas_det:[{n:1,qty:100,uid:'MET-002-C1',estado:'En Ensamble'},{n:2,qty:100,uid:'MET-002-C2',estado:'En Ensamble'}],
+          timeline:[{hora:'14:00',ev:'Metalizado',tipo:'proc'},{hora:'15:30',ev:'CC aprobado',tipo:'cc'},{hora:'16:12',ev:'Entregado a Ensamble',tipo:'next'}],
+          children:[
+            {
+              id:'INY-006', tipo:'INY', lote:'INY-T1-20260415-00040', op:'B-001-00100001220',
+              producto:'CI2 base metalizable', qty:205, cajas:2, turno:'T1', fecha:'15/04/2026 07:00',
+              op_code:'B-001-00100001220', maquina:'INY-04', operario:'Rosa Mamani',
+              cc:'Aprobado', inv:'Confirmado',
+              cajas_det:[{n:1,qty:103,uid:'INY-040-C1',estado:'Consumida'},{n:2,qty:102,uid:'INY-040-C2',estado:'Consumida'}],
+              timeline:[{hora:'07:00',ev:'Inyección',tipo:'proc'},{hora:'07:45',ev:'CC aprobado',tipo:'cc'},{hora:'13:00',ev:'→ Metalizado',tipo:'next'}],
+              children:[]
+            }
+          ]
+        },
+        {
+          id:'SER-PEND', tipo:'SER', lote:'SER-PENDIENTE', op:'B-003-PENDIENTE',
+          producto:'CI3 — Serigrafiado (pendiente)', qty:0, cajas:0, turno:'T2', fecha:'Pendiente',
+          op_code:'—', maquina:'—', operario:'—',
+          cc:'Pendiente', inv:'Pendiente', pendiente:true,
+          cajas_det:[],
+          timeline:[{hora:'—',ev:'Aún no procesado',desc:'Este componente todavía no llegó al ensamble',tipo:'warn'}],
+          children:[]
+        },
+        {
+          id:'PIN-PEND', tipo:'PIN', lote:'PIN-PENDIENTE', op:'B-005-PENDIENTE',
+          producto:'CI4 — Pintado (pendiente)', qty:0, cajas:0, turno:'T2', fecha:'Pendiente',
+          op_code:'—', maquina:'—', operario:'—',
+          cc:'Pendiente', inv:'Pendiente', pendiente:true,
+          cajas_det:[],
+          timeline:[{hora:'—',ev:'Aún no procesado',desc:'Este componente todavía no llegó al ensamble',tipo:'warn'}],
+          children:[]
+        }
+      ]
+    }
+  },
+
+  // Progresiva desde componente
+  prog: {
+    dir:'prog',
+    root: {
+      id:'INY-PROG', tipo:'INY', lote:'INY-T1-20260415-00044', op:'B-001-00100001230',
+      producto:'COMP-CI1 Carcasa base', qty:210, cajas:2, turno:'T1', fecha:'15/04/2026 08:30',
+      op_code:'B-001-00100001230', maquina:'INY-03', operario:'Juan Flores',
+      cc:'Aprobado', inv:'Confirmado',
+      cajas_det:[{n:1,qty:105,uid:'INY-044-C1',estado:'Consumida'},{n:2,qty:105,uid:'INY-044-C2',estado:'Consumida'}],
+      timeline:[{hora:'08:10',ev:'Inyección',tipo:'proc'},{hora:'08:30',ev:'Recojo 210 und',tipo:'ok'},{hora:'09:00',ev:'CC aprobado',tipo:'cc'},{hora:'14:00',ev:'Derivado a Ensamble',tipo:'next'}],
+      children:[
+        {
+          id:'ENS-PROG', tipo:'ENS', lote:'ENS-T2-20260415-00010', op:'B-008-00800000001',
+          producto:'CARCASA-PREMIUM-7X (ensamble)', qty:200, cajas:4, turno:'T2', fecha:'15/04/2026 16:00',
+          op_code:'B-008-00800000001', maquina:'ENS-02', operario:'Luis Torres',
+          cc:'Aprobado', inv:'Confirmado',
+          cajas_det:[{n:1,qty:50,uid:'ENS-010-C1',estado:'Procesada'},{n:2,qty:50,uid:'ENS-010-C2',estado:'Procesada'},{n:3,qty:50,uid:'ENS-010-C3',estado:'Procesada'},{n:4,qty:50,uid:'ENS-010-C4',estado:'Procesada'}],
+          timeline:[{hora:'15:00',ev:'Ensamble',tipo:'proc'},{hora:'16:00',ev:'Recojo 200 und',tipo:'ok'},{hora:'16:30',ev:'CC aprobado',tipo:'cc'}],
+          children:[
+            {
+              id:'PT-PROG', tipo:'PT', lote:'PT-T2-20260415-001', op:'B-008-00800000001',
+              producto:'CARCASA-PREMIUM-7X (PT)', qty:200, cajas:4, turno:'T2', fecha:'15/04/2026 16:35',
+              op_code:'B-008-00800000001', maquina:'ENS-02', operario:'Luis Torres',
+              cc:'Aprobado', inv:'Confirmado',
+              cajas_det:[{n:1,qty:50,uid:'PT-001-C1',estado:'En almacén'},{n:2,qty:50,uid:'PT-001-C2',estado:'En almacén'},{n:3,qty:50,uid:'PT-001-C3',estado:'En almacén'},{n:4,qty:50,uid:'PT-001-C4',estado:'En almacén'}],
+              timeline:[{hora:'16:30',ev:'PT generado',tipo:'ok'},{hora:'16:35',ev:'En almacén PT',tipo:'inv'}],
+              children:[]
+            }
+          ]
+        }
+      ]
+    }
+  }
+};
+
+// ══════════════════════════
+// CONFIG VISUAL
+// ══════════════════════════
+const TIPO_CFG = {
+  PT:  {cls:'nc-PT',  label:'Producto Terminado',  dot:'bg-green-500',  icon:'star'},
+  ENS: {cls:'nc-ENS', label:'Ensamble',            dot:'bg-teal-500',   icon:'tool'},
+  INY: {cls:'nc-INY', label:'Inyectado',           dot:'bg-violet-500', icon:'box'},
+  MET: {cls:'nc-MET', label:'Metalizado',          dot:'bg-sky-500',    icon:'layers'},
+  SER: {cls:'nc-SER', label:'Serigrafiado',        dot:'bg-amber-500',  icon:'print'},
+  PIN: {cls:'nc-PIN', label:'Pintado',             dot:'bg-orange-500', icon:'paint'},
+  MAT: {cls:'nc-MAT', label:'Materia Prima',       dot:'bg-neutral-400',icon:'cube'},
+};
+
+const CC_CFG = {
+  'Aprobado':        {cls:'bg-green-100 text-green-700', dot:'bg-green-500'},
+  'Aprobado parcial':{cls:'bg-cyan-100 text-cyan-700',   dot:'bg-cyan-500'},
+  'Pendiente':       {cls:'bg-amber-100 text-amber-700', dot:'bg-amber-500'},
+  'Rechazado':       {cls:'bg-red-100 text-red-700',     dot:'bg-red-500'},
+};
+
+const INV_CFG = {
+  'Confirmado':{cls:'bg-green-100 text-green-700'},
+  'Pendiente': {cls:'bg-amber-100 text-amber-700'},
+  'Anulado':   {cls:'bg-red-100 text-red-700'},
+};
+
+// ══════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════
+let currentDemo  = null;
+let expandedSet  = new Set();
+let zoomPct      = 100;
+let dirActiva    = 'reg';
+
+// ══════════════════════════
+// BÚSQUEDA / DEMOS
+// ══════════════════════════
+function setDir(d) {
+  dirActiva = d;
+  document.getElementById('btn-reg').className  = d==='reg'
+    ? 'px-3 py-2 text-xs font-bold bg-blue-600 text-white transition-all'
+    : 'px-3 py-2 text-xs font-bold bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all';
+  document.getElementById('btn-prog').className = d==='prog'
+    ? 'px-3 py-2 text-xs font-bold bg-violet-600 text-white transition-all'
+    : 'px-3 py-2 text-xs font-bold bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all';
+}
+
+function buscar() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) { showToast('error','Ingrese un código'); return; }
+  // Para demo, cargar ejemplo más cercano
+  if (q.startsWith('B-001') || q.includes('INY')) cargarDemo('simple');
+  else if (q.startsWith('B-008') || q.includes('ENS') || q.includes('PT')) cargarDemo('complejo');
+  else if (q.startsWith('B-004') || q.includes('MET')) cargarDemo('parcial');
+  else cargarDemo('complejo');
+}
+
+function cargarDemo(key) {
+  const demo = DEMOS[key];
+  if (!demo) return;
+  currentDemo = demo;
+  expandedSet = new Set();
+  // Expandir automáticamente todos los nodos
+  expandAll_inner(demo.root);
+  setDir(demo.dir);
+  renderTree(demo.root, demo.dir);
+}
+
+function expandAll_inner(node) {
+  expandedSet.add(node.id);
+  if (node.children) node.children.forEach(expandAll_inner);
+}
+
+// ══════════════════════════
+// RENDER TREE
+// ══════════════════════════
+function renderTree(root, dir) {
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('result-area').classList.remove('hidden');
+  document.getElementById('result-area').style.display='flex';
+
+  const badge = document.getElementById('dir-badge');
+  if (dir === 'reg') {
+    badge.textContent = '← Regresiva';
+    badge.className   = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700';
+  } else {
+    badge.textContent = 'Progresiva →';
+    badge.className   = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700';
+  }
+
+  document.getElementById('tree-subtitle').textContent = `${root.producto} · ${root.lote}`;
+
+  const container = document.getElementById('tree-root');
+  container.style.transform = `scale(${zoomPct/100})`;
+  container.innerHTML = '';
+  container.appendChild(buildNode(root, 0, true));
+
+  // Reset detalle
+  document.getElementById('det-placeholder').classList.remove('hidden');
+  document.getElementById('det-panel').classList.add('hidden');
+}
+
+function buildNode(node, depth, isRoot) {
+  const cfg = TIPO_CFG[node.tipo] || TIPO_CFG.MAT;
+  const hasChildren = node.children && node.children.length > 0;
+  const isExpanded  = expandedSet.has(node.id);
+
+  // Wrapper
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'display:inline-flex;flex-direction:column;align-items:flex-start;';
+
+  // ROW: indent + connector + card
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;margin-bottom:8px;';
+
+  // Indent based on depth
+  if (depth > 0) {
+    const indent = document.createElement('div');
+    indent.style.cssText = `width:${depth * 32}px;flex-shrink:0;`;
+    row.appendChild(indent);
+    // Horizontal connector
+    const hConn = document.createElement('div');
+    hConn.style.cssText = 'width:20px;height:2px;background:#e2e8f0;flex-shrink:0;margin-right:4px;';
+    row.appendChild(hConn);
+  }
+
+  // Toggle button
+  if (hasChildren) {
+    const toggle = document.createElement('div');
+    toggle.className = `toggle-btn mr-2 ${isExpanded ? 'open' : ''}`;
+    toggle.textContent = isExpanded ? '−' : '+';
+    toggle.onclick = (e) => {
+      e.stopPropagation();
+      if (isExpanded) expandedSet.delete(node.id);
+      else expandedSet.add(node.id);
+      if (currentDemo) renderTree(currentDemo.root, currentDemo.dir);
+    };
+    row.appendChild(toggle);
+  } else {
+    const spacer = document.createElement('div');
+    spacer.style.cssText = 'width:28px;flex-shrink:0;';
+    row.appendChild(spacer);
+  }
+
+  // Card
+  const card = document.createElement('div');
+  card.className = `node-card ${cfg.cls} ${node.pendiente ? 'opacity-50' : ''} ${isRoot ? 'expanded' : ''}`;
+  card.onclick = () => selectNode(node);
+
+  const pendTag = node.pendiente ? `<span class="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full ml-1">PENDIENTE</span>` : '';
+  const qtyStr  = node.qty > 0 ? `${node.qty.toLocaleString()} und` : (node.pendiente ? '—' : '0 und');
+
+  card.innerHTML = `
+    <div class="flex items-start justify-between gap-2 mb-1.5">
+      <span class="text-[9px] font-extrabold uppercase tracking-wider opacity-70">${cfg.label}${pendTag}</span>
+      ${isRoot ? '<span class="text-[9px] font-bold bg-white/60 px-1.5 py-0.5 rounded-full opacity-80">RAÍZ</span>' : ''}
+    </div>
+    <div class="font-mono font-bold text-[11px] leading-tight mb-1 truncate" title="${node.lote}">${node.lote}</div>
+    <div class="text-[10px] opacity-70 truncate mb-2" title="${node.producto}">${node.producto}</div>
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5">
+        <div class="w-1.5 h-1.5 rounded-full ${CC_CFG[node.cc]?.dot || 'bg-slate-400'}"></div>
+        <span class="text-[9px] font-bold opacity-80">${qtyStr}</span>
+      </div>
+      <span class="text-[9px] font-mono opacity-60">${node.op_code !== '—' ? node.op_code.slice(-8) : '—'}</span>
+    </div>
+    ${node.nota ? `<div class="mt-1.5 text-[9px] bg-white/40 rounded px-1.5 py-0.5 font-medium">${node.nota}</div>` : ''}
+  `;
+
+  row.appendChild(card);
+  wrapper.appendChild(row);
+
+  // Children
+  if (hasChildren && isExpanded) {
+    const childrenWrap = document.createElement('div');
+    childrenWrap.style.cssText = 'display:flex;flex-direction:column;position:relative;';
+
+    // Vertical line alongside children
+    if (node.children.length > 1) {
+      const vline = document.createElement('div');
+      vline.style.cssText = `position:absolute;left:${depth * 32 + 34}px;top:0;bottom:8px;width:2px;background:#e2e8f0;pointer-events:none;`;
+      childrenWrap.appendChild(vline);
+    }
+
+    node.children.forEach((child, i) => {
+      childrenWrap.appendChild(buildNode(child, depth + 1, false));
+    });
+    wrapper.appendChild(childrenWrap);
+  }
+
+  return wrapper;
+}
+
+// ══════════════════════════
+// DETALLE NODO
+// ══════════════════════════
+function selectNode(node) {
+  // Highlight selected card
+  document.querySelectorAll('.node-card').forEach(c => c.classList.remove('highlighted'));
+  event?.currentTarget?.classList.add('highlighted');
+
+  document.getElementById('det-placeholder').classList.add('hidden');
+  document.getElementById('det-panel').classList.remove('hidden');
+
+  const cfg = TIPO_CFG[node.tipo] || TIPO_CFG.MAT;
+
+  // Badge
+  const badge = document.getElementById('det-proc-badge');
+  badge.textContent = cfg.label;
+  badge.className   = `text-[10px] font-bold px-2 py-0.5 rounded-full ${
+    node.tipo==='PT'  ? 'bg-green-100 text-green-700':
+    node.tipo==='ENS' ? 'bg-teal-100 text-teal-700':
+    node.tipo==='INY' ? 'bg-violet-100 text-violet-700':
+    node.tipo==='MET' ? 'bg-sky-100 text-sky-700':
+    node.tipo==='SER' ? 'bg-amber-100 text-amber-700':
+    node.tipo==='PIN' ? 'bg-orange-100 text-orange-700':'bg-slate-100 text-slate-600'
+  }`;
+
+  document.getElementById('det-lote').textContent = node.lote;
+
+  // Fields
+  document.getElementById('det-fields').innerHTML = [
+    {label:'OP',         val: node.op_code || '—'},
+    {label:'Producto',   val: node.producto},
+    {label:'Cantidad',   val: node.qty > 0 ? `${node.qty.toLocaleString()} und` : '—'},
+    {label:'Cajas',      val: node.cajas > 0 ? node.cajas : '—'},
+    {label:'Máquina',    val: node.maquina || '—'},
+    {label:'Operario',   val: node.operario || '—'},
+    {label:'Turno',      val: node.turno || '—'},
+    {label:'Fecha',      val: node.fecha || '—'},
+  ].map(f => `
+    <div class="flex justify-between py-1.5 border-b border-slate-50 last:border-0">
+      <span class="text-[10px] text-slate-400">${f.label}</span>
+      <span class="text-[10px] font-bold text-slate-700 font-mono truncate max-w-[140px]" title="${f.val}">${f.val}</span>
+    </div>`).join('');
+
+  // Estados
+  document.getElementById('det-estados').innerHTML = [
+    {label:'CC', val: node.cc, cfg: CC_CFG[node.cc] || {cls:'bg-slate-100 text-slate-600'}},
+    {label:'Inv.', val: node.inv, cfg: INV_CFG[node.inv] || {cls:'bg-slate-100 text-slate-600'}},
+  ].map(s => `
+    <div class="rounded-xl p-2 text-center ${s.cfg.cls}">
+      <div class="text-[9px] font-bold opacity-60 uppercase mb-0.5">${s.label}</div>
+      <div class="text-[10px] font-extrabold">${s.val}</div>
+    </div>`).join('');
+
+  // Cajas grid
+  const cajasBlock = document.getElementById('det-cajas-block');
+  if (node.cajas_det && node.cajas_det.length > 0) {
+    cajasBlock.classList.remove('hidden');
+    document.getElementById('det-cajas-count').textContent = `${node.cajas_det.length} cajas`;
+    document.getElementById('det-cajas-grid').innerHTML = node.cajas_det.map(c => {
+      const bg = c.estado==='Consumida'?'bg-blue-100 border-blue-300 text-blue-700':
+                 c.estado==='En almacén'?'bg-green-100 border-green-300 text-green-700':
+                 c.estado==='En Ensamble'?'bg-teal-100 border-teal-300 text-teal-700':
+                 'bg-slate-100 border-slate-300 text-slate-500';
+      return `<div class="border-2 rounded-xl p-1.5 text-center cursor-default ${bg}" title="${c.uid}">
+        <div class="font-extrabold text-xs">${c.n}</div>
+        <div class="text-[8px] font-bold mt-0.5 leading-none">${c.qty}</div>
+      </div>`;
+    }).join('');
+  } else {
+    cajasBlock.classList.add('hidden');
+  }
+
+  // Timeline
+  const TL_CFG = {
+    proc: {dot:'bg-violet-500',line:'bg-violet-100'},
+    ok:   {dot:'bg-green-500', line:'bg-green-100'},
+    cc:   {dot:'bg-blue-500',  line:'bg-blue-100'},
+    inv:  {dot:'bg-indigo-500',line:'bg-indigo-100'},
+    next: {dot:'bg-amber-500', line:'bg-amber-100'},
+    warn: {dot:'bg-orange-400',line:'bg-orange-100'},
+  };
+  document.getElementById('det-timeline').innerHTML = (node.timeline||[]).map((t, i) => {
+    const tc = TL_CFG[t.tipo] || TL_CFG.ok;
+    return `
+    <div class="tl-item ${i < (node.timeline.length-1) ? 'mb-1' : ''}">
+      <div class="tl-dot ${tc.dot}"></div>
+      <div class="text-[10px] font-bold text-slate-700 mb-0.5">${t.ev}</div>
+      ${t.desc ? `<div class="text-[10px] text-slate-400">${t.desc}</div>` : ''}
+      <div class="text-[9px] font-mono text-slate-300 mt-0.5">${t.hora}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════
+// EXPAND / COLLAPSE ALL
+// ══════════════════════════
+function expandAll() {
+  if (currentDemo) {
+    expandAll_inner(currentDemo.root);
+    renderTree(currentDemo.root, currentDemo.dir);
+  }
+}
+function collapseAll() {
+  if (!currentDemo) return;
+  expandedSet.clear();
+  expandedSet.add(currentDemo.root.id);
+  renderTree(currentDemo.root, currentDemo.dir);
+}
+
+// ══════════════════════════
+// ZOOM
+// ══════════════════════════
+function changeZoom(delta) {
+  zoomPct = Math.max(50, Math.min(150, zoomPct + delta));
+  document.getElementById('zoom-lbl').textContent = zoomPct + '%';
+  document.getElementById('tree-root').style.transform = `scale(${zoomPct/100})`;
+}
+
+// ══════════════════════════
+// TOAST
+// ══════════════════════════
+let toastT;
+function showToast(type, msg) {
+  clearTimeout(toastT);
+  const icons = {
+    success:`<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    error:  `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    info:   `<svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`,
+  };
+  document.getElementById('toast-icon').innerHTML = icons[type]||icons.info;
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast').classList.remove('hidden');
+  toastT = setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3000);
+}
+</script>
+</body>
+</html>
