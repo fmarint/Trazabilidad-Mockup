@@ -1,84 +1,188 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TrazeQ — Registro de Inventario</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      fontFamily: {
-        sans: ['Plus Jakarta Sans','sans-serif'],
-        mono: ['JetBrains Mono','monospace'],
-      },
-      animation: {
-        'fade-in':  'fadeIn .25s ease',
-        'slide-up': 'slideUp .3s ease',
-        'pop':      'pop .35s cubic-bezier(.36,.07,.19,.97)',
-        'spin-slow':'spin 1s linear infinite',
-        'pulse-soft':'pulseSoft 2s infinite',
-      },
-      keyframes: {
-        fadeIn:    {from:{opacity:0},to:{opacity:1}},
-        slideUp:   {from:{opacity:0,transform:'translateY(12px)'},to:{opacity:1,transform:'translateY(0)'}},
-        pop:       {'0%':{transform:'scale(.92)',opacity:0},'60%':{transform:'scale(1.04)'},'100%':{transform:'scale(1)',opacity:1}},
-        pulseSoft: {'0%,100%':{opacity:1},'50%':{opacity:.4}},
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrazeQ — Registro de Inventario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          animation: {
+            'fade-in': 'fadeIn .25s ease',
+            'slide-up': 'slideUp .3s ease',
+            'pop': 'pop .35s cubic-bezier(.36,.07,.19,.97)',
+            'spin-slow': 'spin 1s linear infinite',
+            'pulse-soft': 'pulseSoft 2s infinite',
+          },
+          keyframes: {
+            fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+            slideUp: { from: { opacity: 0, transform: 'translateY(12px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+            pop: { '0%': { transform: 'scale(.92)', opacity: 0 }, '60%': { transform: 'scale(1.04)' }, '100%': { transform: 'scale(1)', opacity: 1 } },
+            pulseSoft: { '0%,100%': { opacity: 1 }, '50%': { opacity: .4 } },
+          }
+        }
       }
     }
-  }
-}
-</script>
-<style>
-  *{box-sizing:border-box;}
-  body{font-family:'Plus Jakarta Sans',sans-serif;}
-  .scrollbar-light::-webkit-scrollbar{width:4px;height:4px;}
-  .scrollbar-light::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px;}
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-  /* Scan animation */
-  @keyframes scanLine{0%,100%{top:5px;opacity:.9}50%{top:46px;opacity:.3}}
-  .scan-beam{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#22c55e,transparent);animation:scanLine 1.6s ease-in-out infinite;}
-  .bracket{position:absolute;width:13px;height:13px;}
-  .bracket-tl{top:0;left:0;border-top:2.5px solid currentColor;border-left:2.5px solid currentColor;border-radius:2px 0 0 0;}
-  .bracket-tr{top:0;right:0;border-top:2.5px solid currentColor;border-right:2.5px solid currentColor;border-radius:0 2px 0 0;}
-  .bracket-bl{bottom:0;left:0;border-bottom:2.5px solid currentColor;border-left:2.5px solid currentColor;border-radius:0 0 0 2px;}
-  .bracket-br{bottom:0;right:0;border-bottom:2.5px solid currentColor;border-right:2.5px solid currentColor;border-radius:0 0 2px 0;}
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
 
-  /* Stepper */
-  .step-line{flex:1;height:2px;background:#e2e8f0;transition:background .4s;}
-  .step-line.done{background:#16a34a;}
+    .scrollbar-light::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
 
-  /* Caja chip */
-  .caja-chip{transition:all .15s;cursor:pointer;}
-  .caja-chip:hover{transform:scale(1.05);}
-  .caja-chip.selected{ring:2px;}
+    .scrollbar-light::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 99px;
+    }
 
-  /* Progress */
-  .prog-fill{transition:width .6s cubic-bezier(.4,0,.2,1);}
+    /* Scan animation */
+    @keyframes scanLine {
 
-  input:focus,select:focus,textarea:focus{outline:none;}
-  input[type=checkbox]{accent-color:#2563eb;width:15px;height:15px;cursor:pointer;}
-</style>
+      0%,
+      100% {
+        top: 5px;
+        opacity: .9
+      }
+
+      50% {
+        top: 46px;
+        opacity: .3
+      }
+    }
+
+    .scan-beam {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #22c55e, transparent);
+      animation: scanLine 1.6s ease-in-out infinite;
+    }
+
+    .bracket {
+      position: absolute;
+      width: 13px;
+      height: 13px;
+    }
+
+    .bracket-tl {
+      top: 0;
+      left: 0;
+      border-top: 2.5px solid currentColor;
+      border-left: 2.5px solid currentColor;
+      border-radius: 2px 0 0 0;
+    }
+
+    .bracket-tr {
+      top: 0;
+      right: 0;
+      border-top: 2.5px solid currentColor;
+      border-right: 2.5px solid currentColor;
+      border-radius: 0 2px 0 0;
+    }
+
+    .bracket-bl {
+      bottom: 0;
+      left: 0;
+      border-bottom: 2.5px solid currentColor;
+      border-left: 2.5px solid currentColor;
+      border-radius: 0 0 0 2px;
+    }
+
+    .bracket-br {
+      bottom: 0;
+      right: 0;
+      border-bottom: 2.5px solid currentColor;
+      border-right: 2.5px solid currentColor;
+      border-radius: 0 0 2px 0;
+    }
+
+    /* Stepper */
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: #e2e8f0;
+      transition: background .4s;
+    }
+
+    .step-line.done {
+      background: #16a34a;
+    }
+
+    /* Caja chip */
+    .caja-chip {
+      transition: all .15s;
+      cursor: pointer;
+    }
+
+    .caja-chip:hover {
+      transform: scale(1.05);
+    }
+
+    .caja-chip.selected {
+      ring: 2px;
+    }
+
+    /* Progress */
+    .prog-fill {
+      transition: width .6s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+    }
+
+    input[type=checkbox] {
+      accent-color: #2563eb;
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+  </style>
 </head>
+
 <body class="bg-slate-100 flex min-h-screen">
 
-<!-- ══════ SIDEBAR -->
-<aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
-  <div class="px-4 py-5 border-b border-white/5">
-    <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-          <rect x="3" y="14" width="7" height="7"/><path d="M14 17h7M17 14v7"/>
-        </svg>
+  <!-- ══════ SIDEBAR -->
+  <aside class="w-56 bg-[#0c1220] flex flex-col flex-shrink-0 fixed inset-y-0 left-0 z-20">
+    <div class="px-4 py-5 border-b border-white/5">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <path d="M14 17h7M17 14v7" />
+          </svg>
+        </div>
+        <div>
+          <div class="text-white font-bold text-sm">TrazeQ</div>
+          <div class="text-slate-500 text-[10px]">v2.4</div>
+        </div>
       </div>
-      <div><div class="text-white font-bold text-sm">TrazeQ</div><div class="text-slate-500 text-[10px]">v2.4</div></div>
     </div>
-  </div>
 
-  <nav class="flex-1 px-2.5 py-3 space-y-0.5">
+    <nav class="flex-1 px-2.5 py-3 space-y-0.5">
 
       <div class="text-slate-600 text-[9px] font-bold uppercase tracking-widest px-2 mb-2">Principal</div>
 
@@ -132,12 +236,15 @@ tailwind.config = {
         </svg>Partes de Trabajo
       </a>
 
-       <a href="seguimiento_inventario.html" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
-      </svg>Inventario
-    </a>
+      <a href="seguimiento_inventario.html"
+        class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>Inventario
+      </a>
 
       <a href="trazabilidad.html"
         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
@@ -146,12 +253,14 @@ tailwind.config = {
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>Trazabilidad
       </a>
+
       <a
         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>Reportes
       </a>
+
       <a
         class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-[#162032] hover:text-slate-200 text-xs font-medium cursor-pointer transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -163,485 +272,586 @@ tailwind.config = {
 
     </nav>
 
-  <div class="px-3 py-3 border-t border-white/5">
-    <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
-      <div class="w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white text-[11px] font-bold">LG</div>
-      <div><div class="text-slate-200 text-xs font-semibold">Lucía Gómez</div><div class="text-slate-500 text-[10px]">Almacén · T2</div></div>
-      <div class="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-    </div>
-  </div>
-</aside>
-
-<!-- ══════ MAIN -->
-<div class="ml-56 flex-1 flex flex-col min-h-screen">
-
-  <!-- TOPBAR -->
-  <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
-    <div>
-      <h1 class="text-base font-extrabold text-slate-800">Registro de Inventario</h1>
-      <p class="text-[11px] text-slate-400">Por OP y proceso · Cajas del mismo lote · Solo lotes aprobados por CC</p>
-    </div>
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
-        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-        <span class="text-xs font-bold text-green-700">CC aprobados disponibles</span>
+    <div class="px-3 py-3 border-t border-white/5">
+      <div class="flex items-center gap-2.5 bg-white/5 rounded-xl px-3 py-2.5">
+        <div
+          class="w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white text-[11px] font-bold">
+          LG</div>
+        <div>
+          <div class="text-slate-200 text-xs font-semibold">Lucía Gómez</div>
+          <div class="text-slate-500 text-[10px]">Almacén · T2</div>
+        </div>
+        <div class="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
       </div>
-      <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--</div>
-      <button onclick="resetAll()" class="flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors">
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        Nuevo
-      </button>
     </div>
-  </header>
+  </aside>
 
-  <!-- STEPPER -->
-  <div class="bg-white border-b border-slate-100 px-6 py-3">
-    <div class="flex items-center max-w-xl">
-      <div class="flex items-center gap-2"><div id="s1c" class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold transition-all">1</div><span id="s1l" class="text-xs font-bold text-blue-700">Buscar OP / Lote</span></div>
-      <div class="step-line mx-3" id="l12"></div>
-      <div class="flex items-center gap-2"><div id="s2c" class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">2</div><span id="s2l" class="text-xs font-bold text-slate-400">Seleccionar cajas</span></div>
-      <div class="step-line mx-3" id="l23"></div>
-      <div class="flex items-center gap-2"><div id="s3c" class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">3</div><span id="s3l" class="text-xs font-bold text-slate-400">Confirmar registro</span></div>
-    </div>
-  </div>
+  <!-- ══════ MAIN -->
+  <div class="ml-56 flex-1 flex flex-col min-h-screen">
 
-  <main class="flex-1 p-5 space-y-4">
-
-    <!-- ══ PASO 1: BUSCAR OP / LOTE ══ -->
-    <div id="panel1" class="animate-fade-in">
-
-      <!-- BUSCADOR PRINCIPAL -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
-        <div class="flex items-center gap-3 mb-5">
-          <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-slate-800">Identificar la Orden de Producción</h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">Ingrese la OP, escanee cualquier caja del lote, o busque por proceso. El sistema reconoce el formato automáticamente.</p>
-          </div>
-        </div>
-
-        <div class="flex gap-3 mb-4">
-          <!-- Scanner animado -->
-          <div class="relative w-14 h-11 bg-slate-50 border-2 border-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <div class="bracket bracket-tl text-blue-400"></div><div class="bracket bracket-tr text-blue-400"></div>
-            <div class="bracket bracket-bl text-blue-400"></div><div class="bracket bracket-br text-blue-400"></div>
-            <div class="scan-beam" id="scan-icon"></div>
-            <svg class="w-6 h-6 text-blue-300 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <input type="text" id="main-search"
-            placeholder="B-001-00100001234 · B-004-0040000456 · o código de caja..."
-            class="flex-1 border-2 border-blue-300 focus:border-blue-500 bg-blue-50 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all"
-            oninput="onSearchInput(this.value)"
-            onkeydown="if(event.key==='Enter') buscarOP()">
-          <button onclick="buscarOP()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 rounded-xl flex items-center gap-2 transition-colors">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Buscar
-          </button>
-        </div>
-
-        <!-- Formato referencia -->
-        <div class="flex gap-2 flex-wrap">
-          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide self-center">Formatos OP:</span>
-          <button onclick="setDemo('B-001-00100001234')" class="text-[10px] font-mono font-bold bg-violet-50 border border-violet-200 text-violet-700 px-2.5 py-1 rounded-lg hover:bg-violet-100 transition-colors">B-001-xxx (Inyectado)</button>
-          <button onclick="setDemo('B-004-00400000456')" class="text-[10px] font-mono font-bold bg-sky-50 border border-sky-200 text-sky-700 px-2.5 py-1 rounded-lg hover:bg-sky-100 transition-colors">B-004-xxx (Metalizado)</button>
-          <button onclick="setDemo('B-005-00500000789')" class="text-[10px] font-mono font-bold bg-orange-50 border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg hover:bg-orange-100 transition-colors">B-005-xxx (Pintado)</button>
-          <button onclick="setDemo('B-008-00800000012')" class="text-[10px] font-mono font-bold bg-teal-50 border border-teal-200 text-teal-700 px-2.5 py-1 rounded-lg hover:bg-teal-100 transition-colors">B-008-xxx (Ensamble)</button>
-        </div>
-
-        <!-- Error -->
-        <div id="search-error" class="hidden mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 animate-fade-in">
-          <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          <span class="text-xs text-red-700 font-medium" id="search-error-msg">—</span>
-        </div>
+    <!-- TOPBAR -->
+    <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-10">
+      <div>
+        <h1 class="text-base font-extrabold text-slate-800">Registro de Inventario</h1>
+        <p class="text-[11px] text-slate-400">Por OP y proceso · Cajas del mismo lote · Solo lotes aprobados por CC</p>
       </div>
-
-      <!-- LISTA DE OPs DISPONIBLES -->
-      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-bold text-slate-800">OPs con lotes aprobados — pendientes de inventario</h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">Cada OP corresponde a un solo proceso y tiene su almacén de destino asignado automáticamente</p>
-          </div>
-          <div class="flex gap-2">
-            <select id="filt-proc" onchange="filtrarLista()" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-600 cursor-pointer">
-              <option value="">Todos los procesos</option>
-              <option>Inyectado</option><option>Metalizado</option>
-              <option>Pintado</option><option>Ensamble</option>
-            </select>
-          </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
+          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          <span class="text-xs font-bold text-green-700">CC aprobados disponibles</span>
         </div>
+        <div class="bg-slate-800 text-white font-mono text-sm font-bold px-3 py-1.5 rounded-xl" id="clock">--:--:--
+        </div>
+        <button onclick="resetAll()"
+          class="flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          </svg>
+          Nuevo
+        </button>
+      </div>
+    </header>
 
-        <div class="divide-y divide-slate-50" id="op-lista-container"></div>
-
-        <div class="px-5 py-3 bg-slate-50 border-t border-slate-100">
-          <p class="text-[11px] text-slate-400">Las OPs sin lotes aprobados por CC no aparecen en esta lista. Vaya a Control de Calidad para aprobarlos.</p>
+    <!-- STEPPER -->
+    <div class="bg-white border-b border-slate-100 px-6 py-3">
+      <div class="flex items-center max-w-xl">
+        <div class="flex items-center gap-2">
+          <div id="s1c"
+            class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold transition-all">
+            1</div><span id="s1l" class="text-xs font-bold text-blue-700">Buscar OP / Lote</span>
+        </div>
+        <div class="step-line mx-3" id="l12"></div>
+        <div class="flex items-center gap-2">
+          <div id="s2c"
+            class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">
+            2</div><span id="s2l" class="text-xs font-bold text-slate-400">Seleccionar cajas</span>
+        </div>
+        <div class="step-line mx-3" id="l23"></div>
+        <div class="flex items-center gap-2">
+          <div id="s3c"
+            class="w-7 h-7 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center text-xs font-bold transition-all">
+            3</div><span id="s3l" class="text-xs font-bold text-slate-400">Confirmar registro</span>
         </div>
       </div>
     </div>
 
-    <!-- ══ PASO 2: CAJAS DEL LOTE ══ -->
-    <div id="panel2" class="hidden animate-slide-up">
-      <div class="grid grid-cols-3 gap-4">
+    <main class="flex-1 p-5 space-y-4">
 
-        <!-- Info OP + cajas (2/3) -->
-        <div class="col-span-2 space-y-4">
+      <!-- ══ PASO 1: BUSCAR OP / LOTE ══ -->
+      <div id="panel1" class="animate-fade-in">
 
-          <!-- Header OP -->
-          <div class="bg-white border border-slate-200 rounded-2xl p-5">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" id="op-proc-icon-bg">
-                  <svg class="w-5 h-5" id="op-proc-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                </div>
-                <div>
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="font-extrabold text-slate-800 font-mono text-lg" id="op-code">—</span>
-                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" id="op-proc-badge">—</span>
+        <!-- BUSCADOR PRINCIPAL -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 mb-4">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">Identificar la Orden de Producción</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">Ingrese la OP, escanee cualquier caja del lote, o busque por
+                proceso. El sistema reconoce el formato automáticamente.</p>
+            </div>
+          </div>
+
+          <div class="flex gap-3 mb-4">
+            <!-- Scanner animado -->
+            <div
+              class="relative w-14 h-11 bg-slate-50 border-2 border-blue-200 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div class="bracket bracket-tl text-blue-400"></div>
+              <div class="bracket bracket-tr text-blue-400"></div>
+              <div class="bracket bracket-bl text-blue-400"></div>
+              <div class="bracket bracket-br text-blue-400"></div>
+              <div class="scan-beam" id="scan-icon"></div>
+              <svg class="w-6 h-6 text-blue-300 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                stroke-width="1.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <input type="text" id="main-search" placeholder="B-001-00100001234 · B-004-0040000456 · o código de caja..."
+              class="flex-1 border-2 border-blue-300 focus:border-blue-500 bg-blue-50 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all"
+              oninput="onSearchInput(this.value)" onkeydown="if(event.key==='Enter') buscarOP()">
+            <button onclick="buscarOP()"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 rounded-xl flex items-center gap-2 transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>Buscar
+            </button>
+          </div>
+
+          <!-- Formato referencia -->
+          <div class="flex gap-2 flex-wrap">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide self-center">Formatos OP:</span>
+            <button onclick="setDemo('B-001-00100001234')"
+              class="text-[10px] font-mono font-bold bg-violet-50 border border-violet-200 text-violet-700 px-2.5 py-1 rounded-lg hover:bg-violet-100 transition-colors">B-001-xxx
+              (Inyectado)</button>
+            <button onclick="setDemo('B-004-00400000456')"
+              class="text-[10px] font-mono font-bold bg-sky-50 border border-sky-200 text-sky-700 px-2.5 py-1 rounded-lg hover:bg-sky-100 transition-colors">B-004-xxx
+              (Metalizado)</button>
+            <button onclick="setDemo('B-005-00500000789')"
+              class="text-[10px] font-mono font-bold bg-orange-50 border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg hover:bg-orange-100 transition-colors">B-005-xxx
+              (Pintado)</button>
+            <button onclick="setDemo('B-008-00800000012')"
+              class="text-[10px] font-mono font-bold bg-teal-50 border border-teal-200 text-teal-700 px-2.5 py-1 rounded-lg hover:bg-teal-100 transition-colors">B-008-xxx
+              (Ensamble)</button>
+          </div>
+
+          <!-- Error -->
+          <div id="search-error"
+            class="hidden mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2.5 animate-fade-in">
+            <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            <span class="text-xs text-red-700 font-medium" id="search-error-msg">—</span>
+          </div>
+        </div>
+
+        <!-- LISTA DE OPs DISPONIBLES -->
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">OPs con lotes aprobados — pendientes de inventario</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">Cada OP corresponde a un solo proceso y tiene su almacén de
+                destino asignado automáticamente</p>
+            </div>
+            <div class="flex gap-2">
+              <select id="filt-proc" onchange="filtrarLista()"
+                class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-600 cursor-pointer">
+                <option value="">Todos los procesos</option>
+                <option>Inyectado</option>
+                <option>Metalizado</option>
+                <option>Pintado</option>
+                <option>Ensamble</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="divide-y divide-slate-50" id="op-lista-container"></div>
+
+          <div class="px-5 py-3 bg-slate-50 border-t border-slate-100">
+            <p class="text-[11px] text-slate-400">Las OPs sin lotes aprobados por CC no aparecen en esta lista. Vaya a
+              Control de Calidad para aprobarlos.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PASO 2: CAJAS DEL LOTE ══ -->
+      <div id="panel2" class="hidden animate-slide-up">
+        <div class="grid grid-cols-3 gap-4">
+
+          <!-- Info OP + cajas (2/3) -->
+          <div class="col-span-2 space-y-4">
+
+            <!-- Header OP -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5">
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" id="op-proc-icon-bg">
+                    <svg class="w-5 h-5" id="op-proc-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                      stroke-width="2">
+                      <path
+                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    </svg>
                   </div>
-                  <div class="text-xs text-slate-500" id="op-sub">—</div>
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="font-extrabold text-slate-800 font-mono text-lg" id="op-code">—</span>
+                      <span class="text-[10px] font-bold px-2.5 py-1 rounded-full" id="op-proc-badge">—</span>
+                    </div>
+                    <div class="text-xs text-slate-500" id="op-sub">—</div>
+                  </div>
+                </div>
+                <!-- Almacén destino automático -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-right">
+                  <div class="text-[9px] font-bold text-indigo-400 uppercase tracking-wide mb-0.5">Almacén destino
+                    (automático)</div>
+                  <div class="font-bold text-indigo-800 text-sm" id="alm-name">—</div>
+                  <div class="font-mono text-[10px] text-indigo-500" id="alm-code">—</div>
                 </div>
               </div>
-              <!-- Almacén destino automático -->
-              <div class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 text-right">
-                <div class="text-[9px] font-bold text-indigo-400 uppercase tracking-wide mb-0.5">Almacén destino (automático)</div>
-                <div class="font-bold text-indigo-800 text-sm" id="alm-name">—</div>
-                <div class="font-mono text-[10px] text-indigo-500" id="alm-code">—</div>
+
+              <!-- KPIs rápidos OP -->
+              <div class="grid grid-cols-4 gap-3">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                  <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Lote</div>
+                  <div class="font-mono font-bold text-slate-700 text-xs" id="kpi-lote">—</div>
+                </div>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                  <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Cajas totales</div>
+                  <div class="font-extrabold text-slate-800 text-lg leading-none" id="kpi-cajas-tot">—</div>
+                </div>
+                <div class="bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+                  <div class="text-[9px] font-bold text-green-500 uppercase tracking-wide mb-0.5">Aprobado CC</div>
+                  <div class="font-extrabold text-green-700 text-lg leading-none" id="kpi-cc">—</div>
+                  <div class="text-[9px] text-green-500 mt-0.5">und</div>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5">
+                  <div class="text-[9px] font-bold text-blue-500 uppercase tracking-wide mb-0.5">Seleccionado</div>
+                  <div class="font-extrabold text-blue-700 text-lg leading-none" id="kpi-sel">0</div>
+                  <div class="text-[9px] text-blue-500 mt-0.5">und</div>
+                </div>
               </div>
             </div>
 
-            <!-- KPIs rápidos OP -->
-            <div class="grid grid-cols-4 gap-3">
-              <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Lote</div>
-                <div class="font-mono font-bold text-slate-700 text-xs" id="kpi-lote">—</div>
+            <!-- CAJAS -->
+            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-800">Cajas del lote</h3>
+                  <p class="text-[11px] text-slate-400">Todas pertenecen a la misma OP y lote. Seleccione las cajas a
+                    ingresar.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="selTodas()"
+                    class="text-xs border border-slate-200 hover:bg-slate-50 text-slate-500 font-semibold px-3 py-1.5 rounded-lg transition-colors">Seleccionar
+                    todas</button>
+                  <span class="text-[11px] text-slate-400" id="cajas-sel-count">0 / 0 seleccionadas</span>
+                </div>
               </div>
-              <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
-                <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Cajas totales</div>
-                <div class="font-extrabold text-slate-800 text-lg leading-none" id="kpi-cajas-tot">—</div>
-              </div>
-              <div class="bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
-                <div class="text-[9px] font-bold text-green-500 uppercase tracking-wide mb-0.5">Aprobado CC</div>
-                <div class="font-extrabold text-green-700 text-lg leading-none" id="kpi-cc">—</div>
-                <div class="text-[9px] text-green-500 mt-0.5">und</div>
-              </div>
-              <div class="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5">
-                <div class="text-[9px] font-bold text-blue-500 uppercase tracking-wide mb-0.5">Seleccionado</div>
-                <div class="font-extrabold text-blue-700 text-lg leading-none" id="kpi-sel">0</div>
-                <div class="text-[9px] text-blue-500 mt-0.5">und</div>
-              </div>
-            </div>
-          </div>
 
-          <!-- CAJAS -->
-          <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-bold text-slate-800">Cajas del lote</h3>
-                <p class="text-[11px] text-slate-400">Todas pertenecen a la misma OP y lote. Seleccione las cajas a ingresar.</p>
-              </div>
-              <div class="flex items-center gap-2">
-                <button onclick="selTodas()" class="text-xs border border-slate-200 hover:bg-slate-50 text-slate-500 font-semibold px-3 py-1.5 rounded-lg transition-colors">Seleccionar todas</button>
-                <span class="text-[11px] text-slate-400" id="cajas-sel-count">0 / 0 seleccionadas</span>
-              </div>
-            </div>
+              <!-- Grid visual de cajas -->
+              <div class="p-5">
+                <div class="grid grid-cols-5 gap-3 mb-5" id="cajas-visual-grid"></div>
 
-            <!-- Grid visual de cajas -->
-            <div class="p-5">
-              <div class="grid grid-cols-5 gap-3 mb-5" id="cajas-visual-grid"></div>
-
-              <!-- Tabla detalle cajas -->
-              <div class="overflow-x-auto scrollbar-light">
-                <table class="w-full text-xs">
-                  <thead>
-                    <tr class="bg-slate-50 border-b border-slate-100">
-                      <th class="px-3 py-2 w-8"><input type="checkbox" id="chk-all-cajas" onchange="toggleTodasCajas(this)"></th>
-                      <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Caja</th>
-                      <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Código etiqueta</th>
-                      <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cantidad</th>
-                      <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hora recojo</th>
-                      <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Operario</th>
-                      <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">CC</th>
-                      <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cajas-tbody" class="divide-y divide-slate-50"></tbody>
-                </table>
+                <!-- Tabla detalle cajas -->
+                <div class="overflow-x-auto scrollbar-light">
+                  <table class="w-full text-xs">
+                    <thead>
+                      <tr class="bg-slate-50 border-b border-slate-100">
+                        <th class="px-3 py-2 w-8"><input type="checkbox" id="chk-all-cajas"
+                            onchange="toggleTodasCajas(this)"></th>
+                        <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Caja</th>
+                        <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Código etiqueta</th>
+                        <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Cantidad</th>
+                        <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Hora recojo</th>
+                        <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Operario</th>
+                        <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          CC</th>
+                        <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody id="cajas-tbody" class="divide-y divide-slate-50"></tbody>
+                  </table>
+                </div>
               </div>
-            </div>
 
-            <!-- Footer cajas -->
-            <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <div class="text-[11px] text-slate-500">
-                Seleccionadas: <strong class="text-slate-800" id="foot-sel-n">0</strong> cajas ·
-                <strong class="text-blue-700 font-extrabold" id="foot-sel-und">0 und</strong>
-              </div>
-              <button id="btn-paso3" onclick="irPaso3()" disabled
-                class="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-xs px-5 py-2 rounded-xl transition-all">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                Continuar al registro
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Panel derecho: info OP + almacén -->
-        <div class="space-y-4">
-
-          <!-- Detalle proceso -->
-          <div class="bg-white border border-slate-200 rounded-2xl p-4">
-            <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Información del proceso</h3>
-            <div class="space-y-2" id="proc-info-list"></div>
-          </div>
-
-          <!-- Almacén destino -->
-          <div class="bg-white border border-slate-200 rounded-2xl p-4">
-            <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Almacén de destino</h3>
-            <div class="border-2 border-indigo-300 bg-indigo-50 rounded-xl p-3">
-              <div class="flex items-center gap-2 mb-2">
-                <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                <div class="font-bold text-indigo-800 text-sm" id="alm-det-name">—</div>
-              </div>
-              <div class="text-[10px] text-indigo-600 font-mono mb-2" id="alm-det-code">—</div>
-              <div class="text-[10px] text-indigo-500" id="alm-det-desc">—</div>
-              <div class="mt-2 h-1.5 bg-indigo-100 rounded-full overflow-hidden">
-                <div class="h-full bg-indigo-400 prog-fill rounded-full" id="alm-cap-bar" style="width:0%"></div>
-              </div>
-              <div class="flex justify-between mt-1">
-                <span class="text-[9px] text-indigo-400">Capacidad usada</span>
-                <span class="text-[9px] font-bold text-indigo-600" id="alm-cap-pct">—</span>
+              <!-- Footer cajas -->
+              <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div class="text-[11px] text-slate-500">
+                  Seleccionadas: <strong class="text-slate-800" id="foot-sel-n">0</strong> cajas ·
+                  <strong class="text-blue-700 font-extrabold" id="foot-sel-und">0 und</strong>
+                </div>
+                <button id="btn-paso3" onclick="irPaso3()" disabled
+                  class="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-xs px-5 py-2 rounded-xl transition-all">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                  Continuar al registro
+                </button>
               </div>
             </div>
-            <div class="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-2">
-              <svg class="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
-              <p class="text-[10px] text-amber-700 font-medium">El almacén se asigna automáticamente según el proceso de la OP. No es configurable por el usuario.</p>
+          </div>
+
+          <!-- Panel derecho: info OP + almacén -->
+          <div class="space-y-4">
+
+            <!-- Detalle proceso -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Información del proceso</h3>
+              <div class="space-y-2" id="proc-info-list"></div>
             </div>
+
+            <!-- Almacén destino -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Almacén de destino</h3>
+              <div class="border-2 border-indigo-300 bg-indigo-50 rounded-xl p-3">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  <div class="font-bold text-indigo-800 text-sm" id="alm-det-name">—</div>
+                </div>
+                <div class="text-[10px] text-indigo-600 font-mono mb-2" id="alm-det-code">—</div>
+                <div class="text-[10px] text-indigo-500" id="alm-det-desc">—</div>
+                <div class="mt-2 h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-indigo-400 prog-fill rounded-full" id="alm-cap-bar" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between mt-1">
+                  <span class="text-[9px] text-indigo-400">Capacidad usada</span>
+                  <span class="text-[9px] font-bold text-indigo-600" id="alm-cap-pct">—</span>
+                </div>
+              </div>
+              <div class="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-2">
+                <svg class="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                </svg>
+                <p class="text-[10px] text-amber-700 font-medium">El almacén se asigna automáticamente según el proceso
+                  de la OP. No es configurable por el usuario.</p>
+              </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <label
+                class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-2">Observaciones</label>
+              <textarea id="obs" rows="2" placeholder="Opcional..."
+                class="w-full border border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2 text-xs text-slate-600 resize-none transition-all"></textarea>
+            </div>
+
           </div>
-
-          <!-- Observaciones -->
-          <div class="bg-white border border-slate-200 rounded-2xl p-4">
-            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-2">Observaciones</label>
-            <textarea id="obs" rows="2" placeholder="Opcional..."
-              class="w-full border border-slate-200 focus:border-blue-400 rounded-xl px-3 py-2 text-xs text-slate-600 resize-none transition-all"></textarea>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- ══ PASO 3: CONFIRMAR ══ -->
-    <div id="panel3" class="hidden animate-slide-up">
-      <div class="grid grid-cols-3 gap-4">
-
-        <!-- Resumen (2/3) -->
-        <div class="col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-100">
-            <h3 class="text-sm font-bold text-slate-800">Resumen del registro</h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">Verifique los datos antes de confirmar. Esta acción registrará el movimiento en el ERP.</p>
-          </div>
-
-          <!-- Bloque OP / proceso / almacén -->
-          <div class="px-5 py-4 bg-slate-50 border-b border-slate-100">
-            <div class="grid grid-cols-3 gap-4" id="conf-op-block"></div>
-          </div>
-
-          <!-- Tabla cajas seleccionadas -->
-          <div class="overflow-x-auto scrollbar-light">
-            <table class="w-full text-xs">
-              <thead>
-                <tr class="bg-slate-50 border-b border-slate-100">
-                  <th class="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Caja</th>
-                  <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Código etiqueta</th>
-                  <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cantidad</th>
-                  <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">CC</th>
-                  <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado actual</th>
-                </tr>
-              </thead>
-              <tbody id="conf-tbody" class="divide-y divide-slate-50"></tbody>
-              <tfoot>
-                <tr class="bg-slate-50 border-t-2 border-slate-300">
-                  <td colspan="2" class="px-4 py-3 font-extrabold text-slate-800">TOTAL</td>
-                  <td class="px-3 py-3 text-center font-extrabold text-blue-700 text-sm" id="conf-total-und">—</td>
-                  <td colspan="2" class="px-3 py-3 text-center text-[10px] text-slate-400" id="conf-total-cajas">—</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- Acciones (1/3) -->
-        <div class="space-y-4">
-
-          <!-- Resumen KPIs -->
-          <div class="bg-white border border-slate-200 rounded-2xl p-4">
-            <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Resumen</h3>
-            <div class="space-y-2.5" id="conf-kpis"></div>
-          </div>
-
-          <!-- Botones -->
-          <button onclick="ejecutarRegistro()" id="btn-registrar"
-            class="w-full flex items-center justify-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-extrabold text-sm py-4 rounded-2xl transition-all active:scale-95 shadow-lg shadow-green-100">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Registrar en inventario
-          </button>
-          <button onclick="irPaso2()" class="w-full border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold py-2.5 rounded-xl transition-colors">
-            ← Volver y editar
-          </button>
         </div>
       </div>
-    </div>
 
-    <!-- ══ RESULTADO ══ -->
-    <div id="panel-result" class="hidden animate-pop">
-      <div class="bg-white border border-slate-200 rounded-2xl p-10 text-center max-w-2xl mx-auto">
-        <div class="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
-          <svg class="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <h2 class="text-xl font-extrabold text-slate-800 mb-1">Inventario registrado</h2>
-        <p class="text-sm text-slate-400 mb-6" id="result-sub">—</p>
+      <!-- ══ PASO 3: CONFIRMAR ══ -->
+      <div id="panel3" class="hidden animate-slide-up">
+        <div class="grid grid-cols-3 gap-4">
 
-        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left mb-5 space-y-2" id="result-detail"></div>
+          <!-- Resumen (2/3) -->
+          <div class="col-span-2 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100">
+              <h3 class="text-sm font-bold text-slate-800">Resumen del registro</h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">Verifique los datos antes de confirmar. Esta acción
+                registrará el movimiento en el ERP.</p>
+            </div>
 
-        <div class="flex gap-3 justify-center">
-          <button onclick="resetAll()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>Nuevo registro
-          </button>
-          <button onclick="showToast('info','Abriendo trazabilidad...')" class="border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-sm px-6 py-3 rounded-xl transition-colors">
-            Ver trazabilidad
-          </button>
+            <!-- Bloque OP / proceso / almacén -->
+            <div class="px-5 py-4 bg-slate-50 border-b border-slate-100">
+              <div class="grid grid-cols-3 gap-4" id="conf-op-block"></div>
+            </div>
+
+            <!-- Tabla cajas seleccionadas -->
+            <div class="overflow-x-auto scrollbar-light">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-100">
+                    <th class="px-4 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Caja
+                    </th>
+                    <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Código etiqueta</th>
+                    <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Cantidad</th>
+                    <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">CC
+                    </th>
+                    <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Estado actual</th>
+                  </tr>
+                </thead>
+                <tbody id="conf-tbody" class="divide-y divide-slate-50"></tbody>
+                <tfoot>
+                  <tr class="bg-slate-50 border-t-2 border-slate-300">
+                    <td colspan="2" class="px-4 py-3 font-extrabold text-slate-800">TOTAL</td>
+                    <td class="px-3 py-3 text-center font-extrabold text-blue-700 text-sm" id="conf-total-und">—</td>
+                    <td colspan="2" class="px-3 py-3 text-center text-[10px] text-slate-400" id="conf-total-cajas">—
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Acciones (1/3) -->
+          <div class="space-y-4">
+
+            <!-- Resumen KPIs -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-4">
+              <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wide mb-3">Resumen</h3>
+              <div class="space-y-2.5" id="conf-kpis"></div>
+            </div>
+
+            <!-- Botones -->
+            <button onclick="ejecutarRegistro()" id="btn-registrar"
+              class="w-full flex items-center justify-center gap-2.5 bg-green-600 hover:bg-green-700 text-white font-extrabold text-sm py-4 rounded-2xl transition-all active:scale-95 shadow-lg shadow-green-100">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Registrar en inventario
+            </button>
+            <button onclick="irPaso2()"
+              class="w-full border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold py-2.5 rounded-xl transition-colors">
+              ← Volver y editar
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-  </main>
-</div>
+      <!-- ══ RESULTADO ══ -->
+      <div id="panel-result" class="hidden animate-pop">
+        <div class="bg-white border border-slate-200 rounded-2xl p-10 text-center max-w-2xl mx-auto">
+          <div class="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+          <h2 class="text-xl font-extrabold text-slate-800 mb-1">Inventario registrado</h2>
+          <p class="text-sm text-slate-400 mb-6" id="result-sub">—</p>
 
-<!-- TOAST -->
-<div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
-  <div class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[240px]">
-    <span id="toast-icon"></span><span id="toast-msg"></span>
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left mb-5 space-y-2" id="result-detail">
+          </div>
+
+          <div class="flex gap-3 justify-center">
+            <button onclick="resetAll()"
+              class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12l7-7 7 7" />
+              </svg>Nuevo registro
+            </button>
+            <button onclick="showToast('info','Abriendo trazabilidad...')"
+              class="border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-sm px-6 py-3 rounded-xl transition-colors">
+              Ver trazabilidad
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
   </div>
-</div>
 
-<script>
-// ══════════════════
-// CLOCK
-// ══════════════════
-function tick(){document.getElementById('clock').textContent=new Date().toTimeString().split(' ')[0];}
-setInterval(tick,1000);tick();
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden animate-fade-in">
+    <div
+      class="bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[240px]">
+      <span id="toast-icon"></span><span id="toast-msg"></span>
+    </div>
+  </div>
 
-// ══════════════════
-// BASE DE DATOS
-// ══════════════════
-const PROC_CONFIG = {
-  'Inyectado': {
-    prefijo:'B-001', color:'violet',
-    fill:'bg-violet-100', text:'text-violet-700', border:'border-violet-300',
-    icoBg:'bg-violet-100', icoText:'text-violet-600',
-    alm:{ code:'ALM-INY-01', name:'Almacén Inyectado', desc:'Planta 1 · Zona A · Temperatura ambiente', cap:72 }
-  },
-  'Metalizado': {
-    prefijo:'B-004', color:'sky',
-    fill:'bg-sky-100', text:'text-sky-700', border:'border-sky-300',
-    icoBg:'bg-sky-100', icoText:'text-sky-600',
-    alm:{ code:'ALM-MET-01', name:'Almacén Metalizado', desc:'Planta 1 · Zona B · Protección UV', cap:45 }
-  },
-  'Pintado': {
-    prefijo:'B-005', color:'orange',
-    fill:'bg-orange-100', text:'text-orange-700', border:'border-orange-300',
-    icoBg:'bg-orange-100', icoText:'text-orange-600',
-    alm:{ code:'ALM-PIN-01', name:'Almacén Pintado', desc:'Planta 2 · Zona C · Ventilación especial', cap:30 }
-  },
-  'Ensamble': {
-    prefijo:'B-008', color:'teal',
-    fill:'bg-teal-100', text:'text-teal-700', border:'border-teal-300',
-    icoBg:'bg-teal-100', icoText:'text-teal-600',
-    alm:{ code:'ALM-PT-01', name:'Almacén PT Principal', desc:'Planta 1 · Zona D · Producto terminado', cap:85 }
-  },
-};
+  <script>
+    // ══════════════════
+    // CLOCK
+    // ══════════════════
+    function tick() { document.getElementById('clock').textContent = new Date().toTimeString().split(' ')[0]; }
+    setInterval(tick, 1000); tick();
 
-function detectarProceso(op) {
-  if (/^B-001/i.test(op)) return 'Inyectado';
-  if (/^B-004/i.test(op)) return 'Metalizado';
-  if (/^B-005/i.test(op)) return 'Pintado';
-  if (/^B-008/i.test(op)) return 'Ensamble';
-  // Si es código de caja/etiqueta buscar por lote
-  for (const [op2, data] of Object.entries(OPS_DB)) {
-    if (data.cajas.some(c => c.uid === op || c.lote === op)) return data.proceso;
-  }
-  return null;
-}
+    // ══════════════════
+    // BASE DE DATOS
+    // ══════════════════
+    const PROC_CONFIG = {
+      'Inyectado': {
+        prefijo: 'B-001', color: 'violet',
+        fill: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300',
+        icoBg: 'bg-violet-100', icoText: 'text-violet-600',
+        alm: { code: 'ALM-INY-01', name: 'Almacén Inyectado', desc: 'Planta 1 · Zona A · Temperatura ambiente', cap: 72 }
+      },
+      'Metalizado': {
+        prefijo: 'B-004', color: 'sky',
+        fill: 'bg-sky-100', text: 'text-sky-700', border: 'border-sky-300',
+        icoBg: 'bg-sky-100', icoText: 'text-sky-600',
+        alm: { code: 'ALM-MET-01', name: 'Almacén Metalizado', desc: 'Planta 1 · Zona B · Protección UV', cap: 45 }
+      },
+      'Pintado': {
+        prefijo: 'B-005', color: 'orange',
+        fill: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300',
+        icoBg: 'bg-orange-100', icoText: 'text-orange-600',
+        alm: { code: 'ALM-PIN-01', name: 'Almacén Pintado', desc: 'Planta 2 · Zona C · Ventilación especial', cap: 30 }
+      },
+      'Ensamble': {
+        prefijo: 'B-008', color: 'teal',
+        fill: 'bg-teal-100', text: 'text-teal-700', border: 'border-teal-300',
+        icoBg: 'bg-teal-100', icoText: 'text-teal-600',
+        alm: { code: 'ALM-PT-01', name: 'Almacén PT Principal', desc: 'Planta 1 · Zona D · Producto terminado', cap: 85 }
+      },
+    };
 
-// Base de datos de OPs con cajas
-const OPS_DB = {
-  'B-001-00100001234': {
-    op:'B-001-00100001234', proceso:'Inyectado', producto:'CARCASA-PRO-7X',
-    lote:'INY-T2-20260415-00045', turno:'T2', fecha:'15/04/2026', articulo:'CAR-PRO-7X',
-    cajas:[
-      {n:1, uid:'7A3F-001', lote:'INY-T2-20260415-00045', qty:120, hora:'14:35', op:'Carlos Vega',  cc:'Aprobado', estado:'Listo'},
-      {n:2, uid:'7A3F-002', lote:'INY-T2-20260415-00045', qty:120, hora:'14:37', op:'Carlos Vega',  cc:'Aprobado', estado:'Listo'},
-      {n:3, uid:'7A3F-003', lote:'INY-T2-20260415-00045', qty:120, hora:'14:39', op:'Juan Flores',  cc:'Aprobado', estado:'Listo'},
-      {n:4, uid:'7A3F-004', lote:'INY-T2-20260415-00045', qty:120, hora:'14:41', op:'Juan Flores',  cc:'Aprobado', estado:'Listo'},
-      {n:5, uid:'7A3F-005', lote:'INY-T2-20260415-00045', qty:120, hora:'14:45', op:'Juan Flores',  cc:'Aprobado', estado:'Listo'},
-      {n:6, uid:'7A3F-006', lote:'INY-T2-20260415-00045', qty:120, hora:'14:48', op:'Rosa Mamani',  cc:'Aprobado', estado:'Listo'},
-      {n:7, uid:'7A3F-007', lote:'INY-T2-20260415-00045', qty:120, hora:'14:52', op:'Rosa Mamani',  cc:'Aprobado parcial', estado:'Listo'},
-      {n:8, uid:'7A3F-008', lote:'INY-T2-20260415-00045', qty:120, hora:'14:55', op:'Rosa Mamani',  cc:'Aprobado', estado:'Listo'},
-    ]
-  },
-  'B-004-00400000456': {
-    op:'B-004-00400000456', proceso:'Metalizado', producto:'CARCASA-PRO-7X metalizada',
-    lote:'MET-T2-20260415-00046', turno:'T2', fecha:'15/04/2026', articulo:'CAR-MET-7X',
-    cajas:[
-      {n:1, uid:'8B4C-001', lote:'MET-T2-20260415-00046', qty:120, hora:'15:10', op:'Luis Torres',  cc:'Aprobado', estado:'Listo'},
-      {n:2, uid:'8B4C-002', lote:'MET-T2-20260415-00046', qty:120, hora:'15:12', op:'Luis Torres',  cc:'Aprobado', estado:'Listo'},
-      {n:3, uid:'8B4C-003', lote:'MET-T2-20260415-00046', qty:120, hora:'15:15', op:'Ana Quispe',   cc:'Aprobado', estado:'Listo'},
-      {n:4, uid:'8B4C-004', lote:'MET-T2-20260415-00046', qty:120, hora:'15:18', op:'Ana Quispe',   cc:'Aprobado', estado:'Listo'},
-      {n:5, uid:'8B4C-005', lote:'MET-T2-20260415-00046', qty:120, hora:'15:21', op:'Ana Quispe',   cc:'Aprobado', estado:'Listo'},
-      {n:6, uid:'8B4C-006', lote:'MET-T2-20260415-00046', qty:120, hora:'15:24', op:'Pedro López',  cc:'Aprobado', estado:'Listo'},
-    ]
-  },
-  'B-005-00500000789': {
-    op:'B-005-00500000789', proceso:'Pintado', producto:'PANEL-A1 pintado',
-    lote:'PIN-T2-20260415-00012', turno:'T2', fecha:'15/04/2026', articulo:'PAN-A1-P',
-    cajas:[
-      {n:1, uid:'9C5D-001', lote:'PIN-T2-20260415-00012', qty:100, hora:'15:30', op:'María Díaz',   cc:'Aprobado', estado:'Listo'},
-      {n:2, uid:'9C5D-002', lote:'PIN-T2-20260415-00012', qty:100, hora:'15:33', op:'María Díaz',   cc:'Aprobado', estado:'Listo'},
-      {n:3, uid:'9C5D-003', lote:'PIN-T2-20260415-00012', qty:100, hora:'15:36', op:'Carlos Vega',  cc:'Aprobado', estado:'Listo'},
-      {n:4, uid:'9C5D-004', lote:'PIN-T2-20260415-00012', qty:100, hora:'15:39', op:'Carlos Vega',  cc:'Aprobado', estado:'Listo'},
-    ]
-  },
-  'B-008-00800000012': {
-    op:'B-008-00800000012', proceso:'Ensamble', producto:'PT-1000 Final',
-    lote:'ENS-T2-20260415-00048', turno:'T2', fecha:'15/04/2026', articulo:'PT-1000',
-    cajas:[
-      {n:1, uid:'0D6E-001', lote:'ENS-T2-20260415-00048', qty:60, hora:'16:00', op:'Luis Torres',   cc:'Aprobado', estado:'Listo'},
-      {n:2, uid:'0D6E-002', lote:'ENS-T2-20260415-00048', qty:60, hora:'16:05', op:'Luis Torres',   cc:'Aprobado', estado:'Listo'},
-      {n:3, uid:'0D6E-003', lote:'ENS-T2-20260415-00048', qty:60, hora:'16:10', op:'Ana Quispe',    cc:'Aprobado', estado:'Listo'},
-    ]
-  },
-};
+    function detectarProceso(op) {
+      if (/^B-001/i.test(op)) return 'Inyectado';
+      if (/^B-004/i.test(op)) return 'Metalizado';
+      if (/^B-005/i.test(op)) return 'Pintado';
+      if (/^B-008/i.test(op)) return 'Ensamble';
+      // Si es código de caja/etiqueta buscar por lote
+      for (const [op2, data] of Object.entries(OPS_DB)) {
+        if (data.cajas.some(c => c.uid === op || c.lote === op)) return data.proceso;
+      }
+      return null;
+    }
 
-let opActual   = null;
-let cajasSel   = new Set();
-let filtroProc = '';
+    // Base de datos de OPs con cajas
+    const OPS_DB = {
+      'B-001-00100001234': {
+        op: 'B-001-00100001234', proceso: 'Inyectado', producto: 'CARCASA-PRO-7X',
+        lote: 'INY-T2-20260415-00045', turno: 'T2', fecha: '15/04/2026', articulo: 'CAR-PRO-7X',
+        cajas: [
+          { n: 1, uid: '7A3F-001', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:35', op: 'Carlos Vega', cc: 'Aprobado', estado: 'Listo' },
+          { n: 2, uid: '7A3F-002', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:37', op: 'Carlos Vega', cc: 'Aprobado', estado: 'Listo' },
+          { n: 3, uid: '7A3F-003', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:39', op: 'Juan Flores', cc: 'Aprobado', estado: 'Listo' },
+          { n: 4, uid: '7A3F-004', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:41', op: 'Juan Flores', cc: 'Aprobado', estado: 'Listo' },
+          { n: 5, uid: '7A3F-005', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:45', op: 'Juan Flores', cc: 'Aprobado', estado: 'Listo' },
+          { n: 6, uid: '7A3F-006', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:48', op: 'Rosa Mamani', cc: 'Aprobado', estado: 'Listo' },
+          { n: 7, uid: '7A3F-007', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:52', op: 'Rosa Mamani', cc: 'Aprobado parcial', estado: 'Listo' },
+          { n: 8, uid: '7A3F-008', lote: 'INY-T2-20260415-00045', qty: 120, hora: '14:55', op: 'Rosa Mamani', cc: 'Aprobado', estado: 'Listo' },
+        ]
+      },
+      'B-004-00400000456': {
+        op: 'B-004-00400000456', proceso: 'Metalizado', producto: 'CARCASA-PRO-7X metalizada',
+        lote: 'MET-T2-20260415-00046', turno: 'T2', fecha: '15/04/2026', articulo: 'CAR-MET-7X',
+        cajas: [
+          { n: 1, uid: '8B4C-001', lote: 'MET-T2-20260415-00046', qty: 120, hora: '15:10', op: 'Luis Torres', cc: 'Aprobado', estado: 'Listo' },
+          { n: 2, uid: '8B4C-002', lote: 'MET-T2-20260415-00046', qty: 120, hora: '15:12', op: 'Luis Torres', cc: 'Aprobado', estado: 'Listo' },
+          { n: 3, uid: '8B4C-003', lote: 'MET-T2-20260415-00046', qty: 120, hora: '15:15', op: 'Ana Quispe', cc: 'Aprobado', estado: 'Listo' },
+          { n: 4, uid: '8B4C-004', lote: 'MET-T2-20260415-00046', qty: 120, hora: '15:18', op: 'Ana Quispe', cc: 'Aprobado', estado: 'Listo' },
+          { n: 5, uid: '8B4C-005', lote: 'MET-T2-20260415-00046', qty: 120, hora: '15:21', op: 'Ana Quispe', cc: 'Aprobado', estado: 'Listo' },
+          { n: 6, uid: '8B4C-006', lote: 'MET-T2-20260415-00046', qty: 120, hora: '15:24', op: 'Pedro López', cc: 'Aprobado', estado: 'Listo' },
+        ]
+      },
+      'B-005-00500000789': {
+        op: 'B-005-00500000789', proceso: 'Pintado', producto: 'PANEL-A1 pintado',
+        lote: 'PIN-T2-20260415-00012', turno: 'T2', fecha: '15/04/2026', articulo: 'PAN-A1-P',
+        cajas: [
+          { n: 1, uid: '9C5D-001', lote: 'PIN-T2-20260415-00012', qty: 100, hora: '15:30', op: 'María Díaz', cc: 'Aprobado', estado: 'Listo' },
+          { n: 2, uid: '9C5D-002', lote: 'PIN-T2-20260415-00012', qty: 100, hora: '15:33', op: 'María Díaz', cc: 'Aprobado', estado: 'Listo' },
+          { n: 3, uid: '9C5D-003', lote: 'PIN-T2-20260415-00012', qty: 100, hora: '15:36', op: 'Carlos Vega', cc: 'Aprobado', estado: 'Listo' },
+          { n: 4, uid: '9C5D-004', lote: 'PIN-T2-20260415-00012', qty: 100, hora: '15:39', op: 'Carlos Vega', cc: 'Aprobado', estado: 'Listo' },
+        ]
+      },
+      'B-008-00800000012': {
+        op: 'B-008-00800000012', proceso: 'Ensamble', producto: 'PT-1000 Final',
+        lote: 'ENS-T2-20260415-00048', turno: 'T2', fecha: '15/04/2026', articulo: 'PT-1000',
+        cajas: [
+          { n: 1, uid: '0D6E-001', lote: 'ENS-T2-20260415-00048', qty: 60, hora: '16:00', op: 'Luis Torres', cc: 'Aprobado', estado: 'Listo' },
+          { n: 2, uid: '0D6E-002', lote: 'ENS-T2-20260415-00048', qty: 60, hora: '16:05', op: 'Luis Torres', cc: 'Aprobado', estado: 'Listo' },
+          { n: 3, uid: '0D6E-003', lote: 'ENS-T2-20260415-00048', qty: 60, hora: '16:10', op: 'Ana Quispe', cc: 'Aprobado', estado: 'Listo' },
+        ]
+      },
+    };
 
-// ══════════════════
-// LISTA OPs
-// ══════════════════
-function renderLista() {
-  const cont = document.getElementById('op-lista-container');
-  let data = Object.values(OPS_DB);
-  if (filtroProc) data = data.filter(o => o.proceso === filtroProc);
+    let opActual = null;
+    let cajasSel = new Set();
+    let filtroProc = '';
 
-  if (!data.length) {
-    cont.innerHTML = `<div class="px-5 py-8 text-center text-slate-400 text-sm">Sin OPs disponibles para este filtro</div>`;
-    return;
-  }
+    // ══════════════════
+    // LISTA OPs
+    // ══════════════════
+    function renderLista() {
+      const cont = document.getElementById('op-lista-container');
+      let data = Object.values(OPS_DB);
+      if (filtroProc) data = data.filter(o => o.proceso === filtroProc);
 
-  cont.innerHTML = data.map(o => {
-    const pc = PROC_CONFIG[o.proceso];
-    const totQty = o.cajas.reduce((s,c) => s+c.qty, 0);
-    return `
+      if (!data.length) {
+        cont.innerHTML = `<div class="px-5 py-8 text-center text-slate-400 text-sm">Sin OPs disponibles para este filtro</div>`;
+        return;
+      }
+
+      cont.innerHTML = data.map(o => {
+        const pc = PROC_CONFIG[o.proceso];
+        const totQty = o.cajas.reduce((s, c) => s + c.qty, 0);
+        return `
     <div class="px-5 py-4 hover:bg-slate-50 transition-colors cursor-pointer group" onclick="seleccionarOP('${o.op}')">
       <div class="flex items-center gap-4">
         <!-- Proceso badge -->
@@ -671,155 +881,155 @@ function renderLista() {
         <svg class="w-4 h-4 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
-  }).join('');
-}
-
-function filtrarLista() {
-  filtroProc = document.getElementById('filt-proc').value;
-  renderLista();
-}
-
-// ══════════════════
-// BUSCAR OP
-// ══════════════════
-function onSearchInput(v) {
-  document.getElementById('search-error').classList.add('hidden');
-}
-
-function setDemo(op) {
-  document.getElementById('main-search').value = op;
-  buscarOP();
-}
-
-function buscarOP() {
-  const q = document.getElementById('main-search').value.trim().toUpperCase();
-  const errEl = document.getElementById('search-error');
-  const errMsg = document.getElementById('search-error-msg');
-  errEl.classList.add('hidden');
-
-  if (!q) { errEl.classList.remove('hidden'); errMsg.textContent = 'Ingrese una OP o código de caja.'; return; }
-
-  // Buscar por OP directa
-  let found = OPS_DB[q] || OPS_DB[q.toLowerCase()];
-
-  // Si no, buscar por código de caja/etiqueta
-  if (!found) {
-    for (const data of Object.values(OPS_DB)) {
-      if (data.cajas.some(c => c.uid.toUpperCase() === q || c.lote.toUpperCase() === q)) {
-        found = data; break;
-      }
+      }).join('');
     }
-  }
 
-  // Buscar coincidencia parcial
-  if (!found) {
-    const partial = Object.values(OPS_DB).find(o => o.op.includes(q) || o.lote.toUpperCase().includes(q));
-    if (partial) found = partial;
-  }
+    function filtrarLista() {
+      filtroProc = document.getElementById('filt-proc').value;
+      renderLista();
+    }
 
-  if (!found) {
-    errEl.classList.remove('hidden');
-    errMsg.textContent = `No se encontró la OP "${q}". Verifique el código o el formato (B-001-xxx, B-004-xxx, B-005-xxx, B-008-xxx).`;
-    return;
-  }
+    // ══════════════════
+    // BUSCAR OP
+    // ══════════════════
+    function onSearchInput(v) {
+      document.getElementById('search-error').classList.add('hidden');
+    }
 
-  seleccionarOP(found.op);
-}
+    function setDemo(op) {
+      document.getElementById('main-search').value = op;
+      buscarOP();
+    }
 
-// ══════════════════
-// SELECCIONAR OP
-// ══════════════════
-function seleccionarOP(opCode) {
-  opActual = OPS_DB[opCode];
-  if (!opActual) return;
-  cajasSel = new Set(opActual.cajas.map(c => c.n)); // todas por defecto
-  setStep(2);
-  renderPaso2();
-}
+    function buscarOP() {
+      const q = document.getElementById('main-search').value.trim().toUpperCase();
+      const errEl = document.getElementById('search-error');
+      const errMsg = document.getElementById('search-error-msg');
+      errEl.classList.add('hidden');
 
-function renderPaso2() {
-  const o  = opActual;
-  const pc = PROC_CONFIG[o.proceso];
-  const alm = pc.alm;
-  const totQty = o.cajas.reduce((s,c) => s+c.qty, 0);
+      if (!q) { errEl.classList.remove('hidden'); errMsg.textContent = 'Ingrese una OP o código de caja.'; return; }
 
-  // Header OP
-  document.getElementById('op-code').textContent = o.op;
-  document.getElementById('op-sub').textContent  = `${o.articulo} · Lote: ${o.lote} · ${o.turno} · ${o.fecha}`;
+      // Buscar por OP directa
+      let found = OPS_DB[q] || OPS_DB[q.toLowerCase()];
 
-  const badge = document.getElementById('op-proc-badge');
-  badge.textContent  = o.proceso;
-  badge.className    = `text-[10px] font-bold px-2.5 py-1 rounded-full ${pc.fill} ${pc.text}`;
+      // Si no, buscar por código de caja/etiqueta
+      if (!found) {
+        for (const data of Object.values(OPS_DB)) {
+          if (data.cajas.some(c => c.uid.toUpperCase() === q || c.lote.toUpperCase() === q)) {
+            found = data; break;
+          }
+        }
+      }
 
-  const iconBg = document.getElementById('op-proc-icon-bg');
-  iconBg.className   = `w-10 h-10 ${pc.icoBg} rounded-xl flex items-center justify-center flex-shrink-0`;
-  document.getElementById('op-proc-icon').className = `w-5 h-5 ${pc.icoText}`;
+      // Buscar coincidencia parcial
+      if (!found) {
+        const partial = Object.values(OPS_DB).find(o => o.op.includes(q) || o.lote.toUpperCase().includes(q));
+        if (partial) found = partial;
+      }
 
-  // Almacén
-  document.getElementById('alm-name').textContent = alm.name;
-  document.getElementById('alm-code').textContent = alm.code;
-  document.getElementById('alm-det-name').textContent = alm.name;
-  document.getElementById('alm-det-code').textContent = alm.code;
-  document.getElementById('alm-det-desc').textContent = alm.desc;
-  document.getElementById('alm-cap-bar').style.width  = alm.cap + '%';
-  document.getElementById('alm-cap-pct').textContent  = alm.cap + '%';
+      if (!found) {
+        errEl.classList.remove('hidden');
+        errMsg.textContent = `No se encontró la OP "${q}". Verifique el código o el formato (B-001-xxx, B-004-xxx, B-005-xxx, B-008-xxx).`;
+        return;
+      }
 
-  // KPIs
-  document.getElementById('kpi-lote').textContent    = o.lote;
-  document.getElementById('kpi-cajas-tot').textContent = o.cajas.length;
-  document.getElementById('kpi-cc').textContent       = totQty.toLocaleString();
+      seleccionarOP(found.op);
+    }
 
-  // Info proceso
-  document.getElementById('proc-info-list').innerHTML = [
-    {label:'Proceso',    val: o.proceso},
-    {label:'Artículo',   val: o.articulo},
-    {label:'Lote',       val: o.lote},
-    {label:'OP',         val: o.op},
-    {label:'Turno',      val: o.turno},
-    {label:'Fecha',      val: o.fecha},
-  ].map(r => `
+    // ══════════════════
+    // SELECCIONAR OP
+    // ══════════════════
+    function seleccionarOP(opCode) {
+      opActual = OPS_DB[opCode];
+      if (!opActual) return;
+      cajasSel = new Set(opActual.cajas.map(c => c.n)); // todas por defecto
+      setStep(2);
+      renderPaso2();
+    }
+
+    function renderPaso2() {
+      const o = opActual;
+      const pc = PROC_CONFIG[o.proceso];
+      const alm = pc.alm;
+      const totQty = o.cajas.reduce((s, c) => s + c.qty, 0);
+
+      // Header OP
+      document.getElementById('op-code').textContent = o.op;
+      document.getElementById('op-sub').textContent = `${o.articulo} · Lote: ${o.lote} · ${o.turno} · ${o.fecha}`;
+
+      const badge = document.getElementById('op-proc-badge');
+      badge.textContent = o.proceso;
+      badge.className = `text-[10px] font-bold px-2.5 py-1 rounded-full ${pc.fill} ${pc.text}`;
+
+      const iconBg = document.getElementById('op-proc-icon-bg');
+      iconBg.className = `w-10 h-10 ${pc.icoBg} rounded-xl flex items-center justify-center flex-shrink-0`;
+      document.getElementById('op-proc-icon').className = `w-5 h-5 ${pc.icoText}`;
+
+      // Almacén
+      document.getElementById('alm-name').textContent = alm.name;
+      document.getElementById('alm-code').textContent = alm.code;
+      document.getElementById('alm-det-name').textContent = alm.name;
+      document.getElementById('alm-det-code').textContent = alm.code;
+      document.getElementById('alm-det-desc').textContent = alm.desc;
+      document.getElementById('alm-cap-bar').style.width = alm.cap + '%';
+      document.getElementById('alm-cap-pct').textContent = alm.cap + '%';
+
+      // KPIs
+      document.getElementById('kpi-lote').textContent = o.lote;
+      document.getElementById('kpi-cajas-tot').textContent = o.cajas.length;
+      document.getElementById('kpi-cc').textContent = totQty.toLocaleString();
+
+      // Info proceso
+      document.getElementById('proc-info-list').innerHTML = [
+        { label: 'Proceso', val: o.proceso },
+        { label: 'Artículo', val: o.articulo },
+        { label: 'Lote', val: o.lote },
+        { label: 'OP', val: o.op },
+        { label: 'Turno', val: o.turno },
+        { label: 'Fecha', val: o.fecha },
+      ].map(r => `
     <div class="flex justify-between py-1.5 border-b border-slate-50 last:border-0">
       <span class="text-[10px] text-slate-400">${r.label}</span>
       <span class="text-[10px] font-bold text-slate-700 font-mono">${r.val}</span>
     </div>`).join('');
 
-  renderCajas();
+      renderCajas();
 
-  ['panel1','panel3','panel-result'].forEach(id => document.getElementById(id).classList.add('hidden'));
-  document.getElementById('panel2').classList.remove('hidden');
-}
+      ['panel1', 'panel3', 'panel-result'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById('panel2').classList.remove('hidden');
+    }
 
-// ══════════════════
-// CAJAS
-// ══════════════════
-function renderCajas() {
-  const o  = opActual;
-  const pc = PROC_CONFIG[o.proceso];
+    // ══════════════════
+    // CAJAS
+    // ══════════════════
+    function renderCajas() {
+      const o = opActual;
+      const pc = PROC_CONFIG[o.proceso];
 
-  // Visual grid
-  const grid = document.getElementById('cajas-visual-grid');
-  grid.innerHTML = o.cajas.map(c => {
-    const sel = cajasSel.has(c.n);
-    const cc  = c.cc === 'Aprobado' ? 'border-green-400 bg-green-100 text-green-700'
-              : c.cc === 'Aprobado parcial' ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
-              : 'border-slate-300 bg-slate-100 text-slate-500';
-    const selCls = sel ? 'ring-2 ring-blue-500 ring-offset-1 shadow-md' : '';
-    return `
+      // Visual grid
+      const grid = document.getElementById('cajas-visual-grid');
+      grid.innerHTML = o.cajas.map(c => {
+        const sel = cajasSel.has(c.n);
+        const cc = c.cc === 'Aprobado' ? 'border-green-400 bg-green-100 text-green-700'
+          : c.cc === 'Aprobado parcial' ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
+            : 'border-slate-300 bg-slate-100 text-slate-500';
+        const selCls = sel ? 'ring-2 ring-blue-500 ring-offset-1 shadow-md' : '';
+        return `
     <div class="caja-chip ${selCls} ${cc} border-2 rounded-xl p-2.5 text-center transition-all" onclick="toggleCaja(${c.n})">
       <div class="font-extrabold text-lg leading-none">${c.n}</div>
       <div class="text-[9px] font-bold mt-1 opacity-70">Caja ${c.n}</div>
       <div class="text-[9px] mt-0.5 font-bold">${sel ? '✓ Sel.' : '—'}</div>
     </div>`;
-  }).join('');
+      }).join('');
 
-  // Tabla
-  const tbody = document.getElementById('cajas-tbody');
-  tbody.innerHTML = o.cajas.map(c => {
-    const sel = cajasSel.has(c.n);
-    const ccCls = c.cc === 'Aprobado' ? 'bg-green-100 text-green-700'
-                : c.cc === 'Aprobado parcial' ? 'bg-cyan-100 text-cyan-700'
-                : 'bg-amber-100 text-amber-700';
-    return `
+      // Tabla
+      const tbody = document.getElementById('cajas-tbody');
+      tbody.innerHTML = o.cajas.map(c => {
+        const sel = cajasSel.has(c.n);
+        const ccCls = c.cc === 'Aprobado' ? 'bg-green-100 text-green-700'
+          : c.cc === 'Aprobado parcial' ? 'bg-cyan-100 text-cyan-700'
+            : 'bg-amber-100 text-amber-700';
+        return `
     <tr class="hover:bg-slate-50 transition-colors ${sel ? 'bg-blue-50/40' : ''} cursor-pointer" onclick="toggleCaja(${c.n})">
       <td class="px-3 py-2.5"><input type="checkbox" ${sel ? 'checked' : ''} onchange="onCajaChk(event,${c.n})" onclick="event.stopPropagation()"></td>
       <td class="px-3 py-2.5 font-bold text-slate-700">Caja ${c.n} de ${o.cajas.length}</td>
@@ -830,75 +1040,75 @@ function renderCajas() {
       <td class="px-3 py-2.5 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ccCls}">${c.cc}</span></td>
       <td class="px-3 py-2.5 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">${c.estado}</span></td>
     </tr>`;
-  }).join('');
+      }).join('');
 
-  updateCajasSel();
-}
+      updateCajasSel();
+    }
 
-function toggleCaja(n) {
-  if (cajasSel.has(n)) cajasSel.delete(n); else cajasSel.add(n);
-  renderCajas();
-}
+    function toggleCaja(n) {
+      if (cajasSel.has(n)) cajasSel.delete(n); else cajasSel.add(n);
+      renderCajas();
+    }
 
-function onCajaChk(e, n) {
-  e.stopPropagation();
-  if (e.target.checked) cajasSel.add(n); else cajasSel.delete(n);
-  renderCajas();
-}
+    function onCajaChk(e, n) {
+      e.stopPropagation();
+      if (e.target.checked) cajasSel.add(n); else cajasSel.delete(n);
+      renderCajas();
+    }
 
-function selTodas() {
-  opActual.cajas.forEach(c => cajasSel.add(c.n));
-  renderCajas();
-}
+    function selTodas() {
+      opActual.cajas.forEach(c => cajasSel.add(c.n));
+      renderCajas();
+    }
 
-function toggleTodasCajas(el) {
-  if (el.checked) opActual.cajas.forEach(c => cajasSel.add(c.n));
-  else cajasSel.clear();
-  renderCajas();
-}
+    function toggleTodasCajas(el) {
+      if (el.checked) opActual.cajas.forEach(c => cajasSel.add(c.n));
+      else cajasSel.clear();
+      renderCajas();
+    }
 
-function updateCajasSel() {
-  const sel = opActual.cajas.filter(c => cajasSel.has(c.n));
-  const totUnd = sel.reduce((s,c) => s+c.qty, 0);
-  document.getElementById('kpi-sel').textContent = totUnd.toLocaleString();
-  document.getElementById('cajas-sel-count').textContent = `${sel.length} / ${opActual.cajas.length} seleccionadas`;
-  document.getElementById('foot-sel-n').textContent   = sel.length;
-  document.getElementById('foot-sel-und').textContent = `${totUnd.toLocaleString()} und`;
+    function updateCajasSel() {
+      const sel = opActual.cajas.filter(c => cajasSel.has(c.n));
+      const totUnd = sel.reduce((s, c) => s + c.qty, 0);
+      document.getElementById('kpi-sel').textContent = totUnd.toLocaleString();
+      document.getElementById('cajas-sel-count').textContent = `${sel.length} / ${opActual.cajas.length} seleccionadas`;
+      document.getElementById('foot-sel-n').textContent = sel.length;
+      document.getElementById('foot-sel-und').textContent = `${totUnd.toLocaleString()} und`;
 
-  const btn = document.getElementById('btn-paso3');
-  btn.disabled = sel.length === 0;
-  btn.textContent = sel.length > 0 ? `Continuar → ${sel.length} caja${sel.length!==1?'s':''} · ${totUnd.toLocaleString()} und` : 'Seleccione al menos una caja';
-}
+      const btn = document.getElementById('btn-paso3');
+      btn.disabled = sel.length === 0;
+      btn.textContent = sel.length > 0 ? `Continuar → ${sel.length} caja${sel.length !== 1 ? 's' : ''} · ${totUnd.toLocaleString()} und` : 'Seleccione al menos una caja';
+    }
 
-// ══════════════════
-// PASO 3
-// ══════════════════
-function irPaso3() {
-  const o   = opActual;
-  const pc  = PROC_CONFIG[o.proceso];
-  const alm = pc.alm;
-  const sel = o.cajas.filter(c => cajasSel.has(c.n));
-  const totUnd = sel.reduce((s,c) => s+c.qty, 0);
+    // ══════════════════
+    // PASO 3
+    // ══════════════════
+    function irPaso3() {
+      const o = opActual;
+      const pc = PROC_CONFIG[o.proceso];
+      const alm = pc.alm;
+      const sel = o.cajas.filter(c => cajasSel.has(c.n));
+      const totUnd = sel.reduce((s, c) => s + c.qty, 0);
 
-  setStep(3);
-  ['panel1','panel2','panel-result'].forEach(id => document.getElementById(id).classList.add('hidden'));
-  document.getElementById('panel3').classList.remove('hidden');
+      setStep(3);
+      ['panel1', 'panel2', 'panel-result'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById('panel3').classList.remove('hidden');
 
-  // Bloque OP
-  document.getElementById('conf-op-block').innerHTML = [
-    {label:'OP', val: o.op},
-    {label:'Proceso', val: `<span class="font-bold px-2 py-0.5 rounded-full text-[11px] ${pc.fill} ${pc.text}">${o.proceso}</span>`},
-    {label:'Almacén destino', val: `<span class="font-mono font-bold text-indigo-700">${alm.code} — ${alm.name}</span>`},
-  ].map(d => `
+      // Bloque OP
+      document.getElementById('conf-op-block').innerHTML = [
+        { label: 'OP', val: o.op },
+        { label: 'Proceso', val: `<span class="font-bold px-2 py-0.5 rounded-full text-[11px] ${pc.fill} ${pc.text}">${o.proceso}</span>` },
+        { label: 'Almacén destino', val: `<span class="font-mono font-bold text-indigo-700">${alm.code} — ${alm.name}</span>` },
+      ].map(d => `
     <div>
       <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">${d.label}</div>
       <div class="text-sm font-bold text-slate-800">${d.val}</div>
     </div>`).join('');
 
-  // Tabla cajas
-  document.getElementById('conf-tbody').innerHTML = sel.map(c => {
-    const ccCls = c.cc === 'Aprobado' ? 'bg-green-100 text-green-700' : 'bg-cyan-100 text-cyan-700';
-    return `
+      // Tabla cajas
+      document.getElementById('conf-tbody').innerHTML = sel.map(c => {
+        const ccCls = c.cc === 'Aprobado' ? 'bg-green-100 text-green-700' : 'bg-cyan-100 text-cyan-700';
+        return `
     <tr class="hover:bg-slate-50">
       <td class="px-4 py-2.5 font-bold text-slate-700">Caja ${c.n} de ${o.cajas.length}</td>
       <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">${c.uid}</td>
@@ -906,131 +1116,132 @@ function irPaso3() {
       <td class="px-3 py-2.5 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${ccCls}">${c.cc}</span></td>
       <td class="px-3 py-2.5 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Listo</span></td>
     </tr>`;
-  }).join('');
+      }).join('');
 
-  document.getElementById('conf-total-und').textContent  = `${totUnd.toLocaleString()} und`;
-  document.getElementById('conf-total-cajas').textContent = `${sel.length} caja${sel.length!==1?'s':''}`;
+      document.getElementById('conf-total-und').textContent = `${totUnd.toLocaleString()} und`;
+      document.getElementById('conf-total-cajas').textContent = `${sel.length} caja${sel.length !== 1 ? 's' : ''}`;
 
-  // KPIs
-  document.getElementById('conf-kpis').innerHTML = [
-    {label:'OP',               val: o.op},
-    {label:'Proceso',          val: o.proceso},
-    {label:'Lote',             val: o.lote},
-    {label:'Cajas a ingresar', val: `${sel.length} de ${o.cajas.length}`},
-    {label:'Unidades',         val: `${totUnd.toLocaleString()} und`, bold:true, color:'text-blue-700'},
-    {label:'Almacén destino',  val: alm.code},
-  ].map(k => `
+      // KPIs
+      document.getElementById('conf-kpis').innerHTML = [
+        { label: 'OP', val: o.op },
+        { label: 'Proceso', val: o.proceso },
+        { label: 'Lote', val: o.lote },
+        { label: 'Cajas a ingresar', val: `${sel.length} de ${o.cajas.length}` },
+        { label: 'Unidades', val: `${totUnd.toLocaleString()} und`, bold: true, color: 'text-blue-700' },
+        { label: 'Almacén destino', val: alm.code },
+      ].map(k => `
     <div class="flex justify-between">
       <span class="text-[11px] text-slate-400">${k.label}</span>
-      <span class="text-[11px] font-bold ${k.color||'text-slate-700'} font-mono">${k.val}</span>
+      <span class="text-[11px] font-bold ${k.color || 'text-slate-700'} font-mono">${k.val}</span>
     </div>`).join('');
-}
+    }
 
-function irPaso2() {
-  setStep(2);
-  document.getElementById('panel3').classList.add('hidden');
-  document.getElementById('panel2').classList.remove('hidden');
-}
+    function irPaso2() {
+      setStep(2);
+      document.getElementById('panel3').classList.add('hidden');
+      document.getElementById('panel2').classList.remove('hidden');
+    }
 
-// ══════════════════
-// EJECUTAR
-// ══════════════════
-function ejecutarRegistro() {
-  const o   = opActual;
-  const pc  = PROC_CONFIG[o.proceso];
-  const sel = o.cajas.filter(c => cajasSel.has(c.n));
-  const totUnd = sel.reduce((s,c) => s+c.qty, 0);
-  const btn = document.getElementById('btn-registrar');
-  btn.disabled = true;
-  btn.innerHTML = `<svg class="w-5 h-5 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Registrando...`;
+    // ══════════════════
+    // EJECUTAR
+    // ══════════════════
+    function ejecutarRegistro() {
+      const o = opActual;
+      const pc = PROC_CONFIG[o.proceso];
+      const sel = o.cajas.filter(c => cajasSel.has(c.n));
+      const totUnd = sel.reduce((s, c) => s + c.qty, 0);
+      const btn = document.getElementById('btn-registrar');
+      btn.disabled = true;
+      btn.innerHTML = `<svg class="w-5 h-5 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Registrando...`;
 
-  setTimeout(() => {
-    const docNum = `INV-${Date.now().toString().slice(-6)}`;
-    const hora   = new Date().toTimeString().split(' ')[0].slice(0,5);
+      setTimeout(() => {
+        const docNum = `INV-${Date.now().toString().slice(-6)}`;
+        const hora = new Date().toTimeString().split(' ')[0].slice(0, 5);
 
-    setStep(4);
-    ['panel3','panel2','panel1'].forEach(id => document.getElementById(id).classList.add('hidden'));
-    document.getElementById('panel-result').classList.remove('hidden');
+        setStep(4);
+        ['panel3', 'panel2', 'panel1'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById('panel-result').classList.remove('hidden');
 
-    document.getElementById('result-sub').textContent =
-      `${sel.length} caja${sel.length!==1?'s':''} · ${totUnd.toLocaleString()} und → ${pc.alm.name}`;
+        document.getElementById('result-sub').textContent =
+          `${sel.length} caja${sel.length !== 1 ? 's' : ''} · ${totUnd.toLocaleString()} und → ${pc.alm.name}`;
 
-    document.getElementById('result-detail').innerHTML = [
-      {label:'Documento ERP',     val: docNum},
-      {label:'OP',                val: o.op},
-      {label:'Proceso',           val: o.proceso},
-      {label:'Artículo',          val: o.articulo},
-      {label:'Lote',              val: o.lote},
-      {label:'Cajas ingresadas',  val: `${sel.length} de ${o.cajas.length}`},
-      {label:'Unidades totales',  val: `${totUnd.toLocaleString()} und`},
-      {label:'Almacén destino',   val: `${pc.alm.code} — ${pc.alm.name}`},
-      {label:'Fecha / Hora',      val: `${o.fecha} ${hora}`},
-      {label:'Usuario',           val: 'Lucía Gómez'},
-    ].map(d => `
+        document.getElementById('result-detail').innerHTML = [
+          { label: 'Documento ERP', val: docNum },
+          { label: 'OP', val: o.op },
+          { label: 'Proceso', val: o.proceso },
+          { label: 'Artículo', val: o.articulo },
+          { label: 'Lote', val: o.lote },
+          { label: 'Cajas ingresadas', val: `${sel.length} de ${o.cajas.length}` },
+          { label: 'Unidades totales', val: `${totUnd.toLocaleString()} und` },
+          { label: 'Almacén destino', val: `${pc.alm.code} — ${pc.alm.name}` },
+          { label: 'Fecha / Hora', val: `${o.fecha} ${hora}` },
+          { label: 'Usuario', val: 'Lucía Gómez' },
+        ].map(d => `
       <div class="flex justify-between py-1.5 border-b border-slate-100 last:border-0">
         <span class="text-[11px] text-slate-400">${d.label}</span>
         <span class="text-[11px] font-bold text-slate-700 font-mono">${d.val}</span>
       </div>`).join('');
 
-    showToast('success', `✓ ${totUnd.toLocaleString()} und → ${pc.alm.code}`);
-  }, 1800);
-}
-
-// ══════════════════
-// STEPS UI
-// ══════════════════
-function setStep(n) {
-  for (let i=1; i<=3; i++) {
-    const c = document.getElementById(`s${i}c`);
-    const l = document.getElementById(`s${i}l`);
-    c.classList.remove('bg-blue-600','bg-green-600','bg-slate-200','text-white','text-slate-400');
-    l.classList.remove('text-blue-700','text-green-700','text-slate-400');
-    if (i < n) {
-      c.classList.add('bg-green-600','text-white'); c.innerHTML = '✓'; l.classList.add('text-green-700');
-    } else if (i === n) {
-      c.classList.add('bg-blue-600','text-white'); c.innerHTML = i; l.classList.add('text-blue-700');
-    } else {
-      c.classList.add('bg-slate-200','text-slate-400'); c.innerHTML = i; l.classList.add('text-slate-400');
+        showToast('success', `✓ ${totUnd.toLocaleString()} und → ${pc.alm.code}`);
+      }, 1800);
     }
-    if (i < 3) document.getElementById(`l${i}${i+1}`).classList.toggle('done', i < n);
-  }
-}
 
-// ══════════════════
-// RESET
-// ══════════════════
-function resetAll() {
-  opActual = null; cajasSel = new Set(); filtroProc = '';
-  document.getElementById('main-search').value = '';
-  document.getElementById('filt-proc').value   = '';
-  document.getElementById('search-error').classList.add('hidden');
-  setStep(1);
-  ['panel2','panel3','panel-result'].forEach(id => document.getElementById(id).classList.add('hidden'));
-  document.getElementById('panel1').classList.remove('hidden');
-  renderLista();
-}
+    // ══════════════════
+    // STEPS UI
+    // ══════════════════
+    function setStep(n) {
+      for (let i = 1; i <= 3; i++) {
+        const c = document.getElementById(`s${i}c`);
+        const l = document.getElementById(`s${i}l`);
+        c.classList.remove('bg-blue-600', 'bg-green-600', 'bg-slate-200', 'text-white', 'text-slate-400');
+        l.classList.remove('text-blue-700', 'text-green-700', 'text-slate-400');
+        if (i < n) {
+          c.classList.add('bg-green-600', 'text-white'); c.innerHTML = '✓'; l.classList.add('text-green-700');
+        } else if (i === n) {
+          c.classList.add('bg-blue-600', 'text-white'); c.innerHTML = i; l.classList.add('text-blue-700');
+        } else {
+          c.classList.add('bg-slate-200', 'text-slate-400'); c.innerHTML = i; l.classList.add('text-slate-400');
+        }
+        if (i < 3) document.getElementById(`l${i}${i + 1}`).classList.toggle('done', i < n);
+      }
+    }
 
-// ══════════════════
-// TOAST
-// ══════════════════
-let toastT;
-function showToast(type, msg) {
-  clearTimeout(toastT);
-  const icons = {
-    success:`<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
-    error:  `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-    info:   `<svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`,
-  };
-  document.getElementById('toast-icon').innerHTML = icons[type]||icons.info;
-  document.getElementById('toast-msg').textContent = msg;
-  document.getElementById('toast').classList.remove('hidden');
-  toastT = setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3500);
-}
+    // ══════════════════
+    // RESET
+    // ══════════════════
+    function resetAll() {
+      opActual = null; cajasSel = new Set(); filtroProc = '';
+      document.getElementById('main-search').value = '';
+      document.getElementById('filt-proc').value = '';
+      document.getElementById('search-error').classList.add('hidden');
+      setStep(1);
+      ['panel2', 'panel3', 'panel-result'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById('panel1').classList.remove('hidden');
+      renderLista();
+    }
 
-// ══════════════════
-// INIT
-// ══════════════════
-renderLista();
-</script>
+    // ══════════════════
+    // TOAST
+    // ══════════════════
+    let toastT;
+    function showToast(type, msg) {
+      clearTimeout(toastT);
+      const icons = {
+        success: `<svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+        error: `<svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+        info: `<svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`,
+      };
+      document.getElementById('toast-icon').innerHTML = icons[type] || icons.info;
+      document.getElementById('toast-msg').textContent = msg;
+      document.getElementById('toast').classList.remove('hidden');
+      toastT = setTimeout(() => document.getElementById('toast').classList.add('hidden'), 3500);
+    }
+
+    // ══════════════════
+    // INIT
+    // ══════════════════
+    renderLista();
+  </script>
 </body>
+
 </html>
